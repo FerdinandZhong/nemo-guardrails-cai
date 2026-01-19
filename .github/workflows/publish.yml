@@ -1,0 +1,73 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 0.1.0)'
+        required: true
+        type: string
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Update version (if manual)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "📝 Updating version to ${{ github.event.inputs.version }}..."
+          # Update version in pyproject.toml
+          sed -i 's/version = ".*"/version = "${{ github.event.inputs.version }}"/' pyproject.toml
+
+      - name: Build package
+        run: |
+          echo "📦 Building package..."
+          python -m build
+
+      - name: Check package
+        run: |
+          echo "🔍 Checking package..."
+          twine check dist/*
+
+      - name: Publish to Test PyPI
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          echo "🚀 Publishing to Test PyPI..."
+          twine upload --repository testpypi dist/*
+
+      - name: Publish to PyPI
+        if: github.event_name == 'release'
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          echo "🚀 Publishing to PyPI..."
+          twine upload dist/*
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Package Publication" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: ${{ github.event.inputs.version || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target**: ${{ github.event_name == 'release' && 'PyPI' || 'Test PyPI' }}" >> $GITHUB_STEP_SUMMARY

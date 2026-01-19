@@ -1,0 +1,37 @@
+# Guardrails using locally hosted models
+# These flows use custom actions that call locally hosted BERT models
+
+# Define bot responses for detected issues
+define bot inform jailbreak detected
+  "I cannot respond to that type of request as it appears to be an attempt to bypass my guidelines."
+
+define bot inform toxic content detected
+  "I cannot respond to toxic or offensive content. Please rephrase your message respectfully."
+
+# Flow: Check for jailbreak attempts using local model
+define flow check jailbreak with local model
+  user ...
+  $is_jailbreak = execute check_jailbreak_local
+
+  if $is_jailbreak
+    bot inform jailbreak detected
+    stop
+
+# Flow: Check for toxic content using local model
+define flow check toxicity with local model
+  user ...
+  $is_toxic = execute check_toxicity_local
+
+  if $is_toxic
+    bot inform toxic content detected
+    stop
+
+# Flow: Generic check with any local model
+# This can be used for custom checks
+define flow check with custom model
+  user ...
+  $result = execute check_with_local_model(model_name="custom_model")
+
+  if not $result.is_safe
+    bot refuse to respond
+    stop

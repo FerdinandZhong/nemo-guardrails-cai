@@ -1,0 +1,15 @@
+# CML Deployment Configuration for NeMo Guardrails
+
+# Server configuration
+server:
+  cpu: 4
+  memory: 16
+  bypass_authentication: false
+  # Port is automatically determined by CDSW_APP_PORT in CAI
+
+  # Optional: Specify runtime (required for some CML instances)
+  # runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+
+# Guardrails configuration
+guardrails:
+  config_path: examples/config

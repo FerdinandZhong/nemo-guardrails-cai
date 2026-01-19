@@ -1,0 +1,25 @@
+# NeMo Guardrails Server Configuration
+
+# Path to guardrails configuration directory
+config_path: examples/config
+
+# Server settings
+server:
+  host: 0.0.0.0
+  port: 8080  # Default port for CAI (overridden by CDSW_APP_PORT in CAI)
+  streaming: true
+  log_level: INFO
+  cors_origins:
+    - "*"
+
+# LLM configuration
+llm:
+  provider: openai
+  model: gpt-3.5-turbo
+  # api_key: ${OPENAI_API_KEY}  # Set via environment variable
+  # api_base: https://api.openai.com/v1
+
+# Additional configuration
+additional_config:
+  max_tokens: 2048
+  temperature: 0.7

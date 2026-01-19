@@ -1,0 +1,53 @@
+# CML Jobs Configuration for NeMo Guardrails Deployment
+
+jobs:
+  # Job 1: Sync Git Repository
+  git_sync:
+    name: "Git Sync"
+    description: "Sync repository from GitHub"
+    script: |
+      #!/bin/bash
+      set -e
+      cd /home/cdsw
+
+      # Check if repo exists
+      if [ -d ".git" ]; then
+        echo "Repository exists, pulling latest changes..."
+        git pull origin main || git pull origin master
+      else
+        echo "Repository not found, should be cloned during project creation"
+        exit 1
+      fi
+
+      echo "Git sync completed successfully"
+    kernel: "python3"
+    cpu: 2
+    memory: 4
+    timeout: 600
+    parent_job_key: null
+
+  # Job 2: Setup Python Environment
+  setup_environment:
+    name: "Setup Environment"
+    description: "Install NeMo Guardrails and dependencies"
+    script: "python3 cai_integration/setup_environment.py"
+    kernel: "python3"
+    cpu: 4
+    memory: 8
+    timeout: 1800
+    parent_job_key: "git_sync"
+
+  # Job 3: Launch Guardrails Server
+  launch_guardrails:
+    name: "Launch Guardrails Server"
+    description: "Deploy NeMo Guardrails as CML Application"
+    script: "python3 cai_integration/launch_guardrails.py"
+    kernel: "python3"
+    cpu: 2
+    memory: 4
+    timeout: 900
+    parent_job_key: "setup_environment"
+    environment:
+      CML_HOST: "${CML_HOST}"
+      CML_API_KEY: "${CML_API_KEY}"
+      CDSW_PROJECT_ID: "${CDSW_PROJECT_ID}"

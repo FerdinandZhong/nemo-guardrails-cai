@@ -1,0 +1,72 @@
+# NeMo Guardrails Server Configuration with Local Models
+# This configuration shows how to configure locally hosted models for guardrail checks
+
+# Path to guardrails configuration directory
+config_path: examples/config_with_local_models
+
+# Server settings
+server:
+  host: 0.0.0.0
+  port: 8080  # Default port for CAI (overridden by CDSW_APP_PORT in CAI)
+  streaming: true
+  log_level: INFO
+  cors_origins:
+    - "*"
+
+# LLM configuration (for main generation)
+llm:
+  provider: openai
+  model: gpt-3.5-turbo
+  # api_key: ${OPENAI_API_KEY}  # Set via environment variable
+
+# Local Models Configuration
+# These models run locally in CAI for various guardrail checks
+local_models:
+  # Jailbreak detection model
+  jailbreak_detector:
+    type: huggingface
+    model_name: "protectai/deberta-v3-base-prompt-injection-v2"  # Example model
+    device: cpu  # Use 'cuda' for GPU, 'mps' for Apple Silicon
+    task_type: classification
+    labels: ["safe", "jailbreak"]
+    threshold: 0.7  # Confidence threshold for classification
+    batch_size: 1
+    max_length: 512
+    auto_load: true  # Load model on server startup
+
+  # Toxicity detection model
+  toxicity_detector:
+    type: huggingface
+    model_name: "unitary/toxic-bert"  # Pre-trained toxicity detection model
+    device: cpu
+    task_type: classification
+    labels: ["non-toxic", "toxic"]
+    threshold: 0.5
+    batch_size: 1
+    max_length: 512
+    auto_load: true
+
+  # Custom sentiment model (example)
+  # sentiment_analyzer:
+  #   type: huggingface
+  #   model_name: "distilbert-base-uncased-finetuned-sst-2-english"
+  #   device: cpu
+  #   task_type: classification
+  #   labels: ["negative", "positive"]
+  #   threshold: 0.6
+  #   auto_load: false  # Load on demand
+
+  # Local fine-tuned model (example)
+  # custom_classifier:
+  #   type: huggingface
+  #   model_name: "/home/cdsw/models/my-custom-bert"  # Path to local model
+  #   device: cuda
+  #   task_type: classification
+  #   labels: ["safe", "unsafe"]
+  #   threshold: 0.8
+  #   auto_load: true
+
+# Additional configuration
+additional_config:
+  max_tokens: 2048
+  temperature: 0.7

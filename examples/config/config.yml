@@ -1,0 +1,30 @@
+# NeMo Guardrails Configuration Example
+
+# Define the LLM model to use
+models:
+  - type: main
+    engine: openai
+    model: gpt-3.5-turbo
+
+# Define the guardrails to apply
+rails:
+  # Input guardrails - applied before LLM processing
+  input:
+    flows:
+      - self check input
+      - check jailbreak
+
+  # Output guardrails - applied after LLM processing
+  output:
+    flows:
+      - self check output
+      - check hallucination
+
+# Sensitive data detection
+sensitive_data_detection:
+  enabled: true
+  entities:
+    - EMAIL_ADDRESS
+    - PHONE_NUMBER
+    - CREDIT_CARD
+    - SSN

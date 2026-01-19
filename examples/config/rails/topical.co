@@ -1,0 +1,25 @@
+# Topical Rails Example
+# Keep conversations on-topic
+
+define user ask about politics
+  "What do you think about the election"
+  "Tell me about politics"
+  "Who should I vote for"
+
+define user ask about religion
+  "What's your religion"
+  "Tell me about God"
+  "Which religion is best"
+
+define bot refuse off topic
+  "I'm focused on helping with technical questions. I can't discuss politics or religion."
+
+define flow
+  user ask about politics
+  bot refuse off topic
+  stop
+
+define flow
+  user ask about religion
+  bot refuse off topic
+  stop

@@ -1,0 +1,24 @@
+# Moderation Rails Example
+# Filter inappropriate content
+
+define bot inform cannot respond inappropriate
+  "I cannot respond to inappropriate content."
+
+define bot inform cannot respond offensive
+  "I cannot respond to offensive language."
+
+define flow
+  user ...
+  $is_appropriate = execute check_jailbreak
+
+  if not $is_appropriate
+    bot inform cannot respond inappropriate
+    stop
+
+define flow
+  user ...
+  $is_offensive = execute check_toxic_language
+
+  if $is_offensive
+    bot inform cannot respond offensive
+    stop
