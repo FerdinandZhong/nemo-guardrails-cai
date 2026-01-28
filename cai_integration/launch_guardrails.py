@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Launch NeMo Guardrails server as a CML Application.
+Launch NeMo Guardrails server as a CAI (CML) Application.
 
 This script:
 1. Loads configuration
-2. Creates a CML Application for the guardrails server
+2. Creates a CAI Application for the guardrails server
 3. Monitors startup
 4. Saves connection info
+
+Uses direct CAI REST API calls instead of external dependencies.
 """
 
 import os
@@ -14,17 +16,9 @@ import sys
 import json
 import logging
 import time
+import requests
 from pathlib import Path
-from typing import Optional
-
-# Add parent directory to path to import caikit
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "caikit"))
-
-try:
-    from caikit import CMLClient
-except ImportError:
-    logging.error("caikit package not found. Please install it first.")
-    sys.exit(1)
+from typing import Optional, Dict, Any
 
 import yaml
 
@@ -36,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class GuardrailsDeployer:
-    """Manages NeMo Guardrails deployment on CML."""
+    """Manages NeMo Guardrails deployment on CAI using REST API."""
 
     def __init__(
         self,
@@ -48,15 +42,63 @@ class GuardrailsDeployer:
         """Initialize the deployer.
 
         Args:
-            cml_host: CML instance URL
-            api_key: CML API key
-            project_id: CML project ID
+            cml_host: CAI instance URL
+            api_key: CAI API key
+            project_id: CAI project ID
             config_path: Path to guardrails configuration file
         """
-        self.client = CMLClient(host=cml_host, api_key=api_key)
+        self.cml_host = cml_host
+        self.api_key = api_key
         self.project_id = project_id
         self.config_path = config_path
+        self.api_url = f"{cml_host.rstrip('/')}/api/v2"
+        self.headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {api_key.strip()}",
+        }
         self.config = self._load_config()
+
+    def make_request(
+        self, method: str, endpoint: str, data: dict = None, params: dict = None
+    ) -> Optional[Dict[str, Any]]:
+        """Make a request to the CAI REST API.
+
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            endpoint: API endpoint path
+            data: Request body data
+            params: Query parameters
+
+        Returns:
+            Response JSON as dictionary, or None on error
+        """
+        url = f"{self.api_url}/{endpoint.lstrip('/')}"
+
+        try:
+            response = requests.request(
+                method=method,
+                url=url,
+                headers=self.headers,
+                json=data,
+                params=params,
+                timeout=30,
+            )
+
+            if 200 <= response.status_code < 300:
+                if response.text:
+                    try:
+                        return response.json()
+                    except json.JSONDecodeError:
+                        return {}
+                return {}
+            else:
+                logger.error(f"API Error ({response.status_code}): {response.text[:200]}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Request error: {e}")
+            return None
 
     def _load_config(self) -> dict:
         """Load configuration from YAML file."""
@@ -84,11 +126,11 @@ class GuardrailsDeployer:
             }
         }
 
-    def create_application(self) -> dict:
-        """Create CML Application for guardrails server.
+    def create_application(self) -> Optional[Dict[str, Any]]:
+        """Create CAI Application for guardrails server.
 
         Returns:
-            Application creation response
+            Application object with id, name, subdomain, etc.
         """
         server_config = self.config.get("server", {})
         guardrails_config = self.config.get("guardrails", {})
@@ -100,8 +142,8 @@ class GuardrailsDeployer:
         # Build startup script
         startup_script = self._build_startup_script(guardrails_config)
 
-        # Create application
-        app_config = {
+        # Build application configuration
+        app_data = {
             "name": app_name,
             "description": "NeMo Guardrails Server",
             "script": startup_script,
@@ -113,22 +155,28 @@ class GuardrailsDeployer:
             "bypass_authentication": server_config.get("bypass_authentication", False),
         }
 
-        # Check if runtime is specified
+        # Add runtime identifier if specified
         if "runtime_identifier" in server_config:
-            app_config["runtime_identifier"] = server_config["runtime_identifier"]
+            app_data["runtime_identifier"] = server_config["runtime_identifier"]
 
         try:
-            app = self.client.applications.create(
-                project_id=self.project_id,
-                **app_config
+            # Create application via REST API
+            result = self.make_request(
+                "POST",
+                f"projects/{self.project_id}/applications",
+                data=app_data
             )
 
-            logger.info(f"Application created successfully: {app.id}")
-            return app
+            if result and "id" in result:
+                logger.info(f"Application created successfully: {result.get('id')}")
+                return result
+            else:
+                logger.error("No application ID in response")
+                return None
 
         except Exception as e:
             logger.error(f"Failed to create application: {e}")
-            raise
+            return None
 
     def _build_startup_script(self, guardrails_config: dict) -> str:
         """Build the startup script for the application.
@@ -206,13 +254,20 @@ echo "==============================================="
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                app = self.client.applications.get(self.project_id, app_id)
+                result = self.make_request(
+                    "GET",
+                    f"projects/{self.project_id}/applications/{app_id}"
+                )
 
-                if app.status == "running":
-                    logger.info("Application is running")
-                    return True
+                if result:
+                    status = result.get("status", "unknown")
 
-                logger.info(f"Application status: {app.status}")
+                    if status == "running":
+                        logger.info("Application is running")
+                        return True
+
+                    logger.info(f"Application status: {status}")
+
                 time.sleep(10)
 
             except Exception as e:
@@ -222,20 +277,21 @@ echo "==============================================="
         logger.error("Timeout waiting for application to be ready")
         return False
 
-    def save_connection_info(self, app: dict, output_path: str = "/home/cdsw/guardrails_info.json"):
+    def save_connection_info(self, app: Dict[str, Any], output_path: str = "/home/cdsw/guardrails_info.json"):
         """Save application connection information.
 
         Args:
-            app: Application object
+            app: Application dictionary from API response
             output_path: Path to save connection info
         """
+        subdomain = app.get("subdomain", app.get("name", "guardrails"))
         info = {
-            "app_id": app.id,
-            "app_name": app.name,
-            "subdomain": app.subdomain,
-            "url": f"https://{app.subdomain}",
-            "status": app.status,
-            "created_at": str(app.created_at) if hasattr(app, 'created_at') else None,
+            "app_id": app.get("id"),
+            "app_name": app.get("name"),
+            "subdomain": subdomain,
+            "url": f"https://{subdomain}",
+            "status": app.get("status"),
+            "created_at": app.get("created_at"),
         }
 
         with open(output_path, 'w') as f:
@@ -272,9 +328,17 @@ def main():
 
         # Create application
         app = deployer.create_application()
+        if not app:
+            logger.error("Failed to create application")
+            sys.exit(1)
+
+        app_id = app.get("id")
+        if not app_id:
+            logger.error("No application ID returned from API")
+            sys.exit(1)
 
         # Wait for application to be ready
-        if not deployer.wait_for_app_ready(app.id):
+        if not deployer.wait_for_app_ready(app_id):
             logger.error("Application failed to start")
             sys.exit(1)
 
