@@ -46,15 +46,16 @@ def run_command(cmd: list, check: bool = True) -> subprocess.CompletedProcess:
     result = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,  # Combine stderr with stdout
         text=True,
         check=check
     )
 
     if result.stdout:
-        logger.info(result.stdout)
-    if result.stderr:
-        logger.warning(result.stderr)
+        # Print all output, whether success or failure
+        for line in result.stdout.strip().split('\n'):
+            if line:
+                logger.info(f"  {line}")
 
     return result
 
@@ -77,8 +78,13 @@ def install_dependencies():
 
     pip_path = VENV_PATH / "bin" / "pip"
 
-    # Upgrade pip
-    run_command([str(pip_path), "install", "--upgrade", "pip"])
+    # Try to upgrade pip (non-critical, skip if fails)
+    try:
+        logger.info("Attempting to upgrade pip...")
+        run_command([str(pip_path), "install", "--upgrade", "pip"], check=False)
+        logger.info("Pip upgrade completed")
+    except Exception as e:
+        logger.warning(f"Pip upgrade failed (continuing anyway): {e}")
 
     # Install requirements
     for package in REQUIREMENTS:
