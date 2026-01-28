@@ -120,6 +120,14 @@ class JobManager:
         if parent_job_id:
             job_data["parent_job_id"] = parent_job_id
 
+        # Add runtime identifier if specified
+        if "runtime_identifier" in job_config:
+            job_data["runtime_identifier"] = job_config["runtime_identifier"]
+
+        # Add environment variables if specified
+        if "environment" in job_config:
+            job_data["environment"] = job_config["environment"]
+
         result = self.make_request("POST", f"projects/{project_id}/jobs", data=job_data)
 
         if result:
@@ -129,9 +137,7 @@ class JobManager:
 
         return None
 
-    def create_jobs_from_config(
-        self, project_id: str, config_path: str = None
-    ) -> Dict[str, str]:
+    def create_jobs_from_config(self, project_id: str, config_path: str = None) -> Dict[str, str]:
         """Create all jobs from configuration."""
         print("\n" + "=" * 70)
         print("Creating CML Jobs")
@@ -235,6 +241,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
