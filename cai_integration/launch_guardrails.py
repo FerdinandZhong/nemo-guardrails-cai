@@ -22,10 +22,7 @@ from typing import Optional, Dict, Any
 
 import yaml
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +34,7 @@ class GuardrailsDeployer:
         cml_host: str,
         api_key: str,
         project_id: str,
-        config_path: str = "guardrails_config.yaml"
+        config_path: str = "guardrails_config.yaml",
     ):
         """Initialize the deployer.
 
@@ -108,7 +105,7 @@ class GuardrailsDeployer:
             logger.warning(f"Config file not found: {config_file}, using defaults")
             return self._default_config()
 
-        with open(config_file, 'r') as f:
+        with open(config_file, "r") as f:
             config = yaml.safe_load(f)
 
         logger.info(f"Loaded configuration from {config_file}")
@@ -121,9 +118,7 @@ class GuardrailsDeployer:
                 "cpu": 4,
                 "memory": 16,
             },
-            "guardrails": {
-                "config_path": "config"
-            }
+            "guardrails": {"config_path": "config"},
         }
 
     def create_application(self) -> Optional[Dict[str, Any]]:
@@ -153,18 +148,16 @@ class GuardrailsDeployer:
                 "GUARDRAILS_CONFIG_PATH": guardrails_config.get("config_path", "config"),
             },
             "bypass_authentication": server_config.get("bypass_authentication", True),
+            "runtime_identifier": server_config.get(
+                "runtime_identifier",
+                "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2025.09.1-b5",
+            ),
         }
-
-        # Add runtime identifier if specified
-        if "runtime_identifier" in server_config:
-            app_data["runtime_identifier"] = server_config["runtime_identifier"]
 
         try:
             # Create application via REST API
             result = self.make_request(
-                "POST",
-                f"projects/{self.project_id}/applications",
-                data=app_data
+                "POST", f"projects/{self.project_id}/applications", data=app_data
             )
 
             if result and "id" in result:
@@ -217,8 +210,7 @@ exec python cai_integration/app_startup.py
         while time.time() - start_time < timeout:
             try:
                 result = self.make_request(
-                    "GET",
-                    f"projects/{self.project_id}/applications/{app_id}"
+                    "GET", f"projects/{self.project_id}/applications/{app_id}"
                 )
 
                 if result:
@@ -239,7 +231,9 @@ exec python cai_integration/app_startup.py
         logger.error("Timeout waiting for application to be ready")
         return False
 
-    def save_connection_info(self, app: Dict[str, Any], output_path: str = "/home/cdsw/guardrails_info.json"):
+    def save_connection_info(
+        self, app: Dict[str, Any], output_path: str = "/home/cdsw/guardrails_info.json"
+    ):
         """Save application connection information.
 
         Args:
@@ -256,7 +250,7 @@ exec python cai_integration/app_startup.py
             "created_at": app.get("created_at"),
         }
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(info, f, indent=2)
 
         logger.info(f"Connection info saved to {output_path}")
@@ -272,7 +266,9 @@ def main():
     config_path = os.environ.get("GUARDRAILS_CONFIG", "guardrails_config.yaml")
 
     if not all([cml_host, api_key, project_id]):
-        logger.error("Missing required environment variables: CML_HOST, CML_API_KEY, CDSW_PROJECT_ID")
+        logger.error(
+            "Missing required environment variables: CML_HOST, CML_API_KEY, CDSW_PROJECT_ID"
+        )
         sys.exit(1)
 
     try:
@@ -282,10 +278,7 @@ def main():
 
         # Create deployer
         deployer = GuardrailsDeployer(
-            cml_host=cml_host,
-            api_key=api_key,
-            project_id=project_id,
-            config_path=config_path
+            cml_host=cml_host, api_key=api_key, project_id=project_id, config_path=config_path
         )
 
         # Create application
