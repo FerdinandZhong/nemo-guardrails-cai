@@ -63,12 +63,6 @@ class JobManager:
                         return {}
                 return {}
             else:
-                # For 400 errors about missing scripts, don't print error (expected on initial deployment)
-                if (
-                    response.status_code == 400
-                    and "not found in project directory" in response.text
-                ):
-                    return None
                 print(f"❌ API Error ({response.status_code}): {response.text[:200]}")
                 return None
 
@@ -143,10 +137,7 @@ class JobManager:
             print(f"   ✅ Job created: {job_id}")
             return job_id
         else:
-            # Job creation failed - likely script doesn't exist
-            # This is common for git_sync.sh on initial deployment
-            print(f"   ⏭️  Skipping: {job_name}")
-            print(f"      Script not in project yet: {script_path}")
+            print(f"   ❌ Failed to create job: {job_name}")
             return None
 
     def create_jobs_from_config(self, project_id: str, config_path: str = None) -> Dict[str, str]:

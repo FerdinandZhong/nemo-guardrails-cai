@@ -1,0 +1,51 @@
+# NeMo Guardrails Jobs with Git Sync - For Updates After Initial Deployment
+#
+# This configuration includes git_sync job for updating existing deployments.
+# Use this AFTER initial deployment when git_sync.sh exists in the project.
+#
+# Usage:
+#   python3 cai_integration/create_jobs.py --project-id <id> --config jobs_config_with_git_sync.yaml
+#
+# Job Dependencies:
+# - git_sync (root) → setup_environment → launch_guardrails (child)
+
+jobs:
+  # Job 1: Sync Git Repository (ROOT JOB)
+  git_sync:
+    name: "Git Repository Sync"
+    description: "Pull latest code from repository"
+    script: "cai_integration/git_sync.sh"
+    kernel: "python3"
+    cpu: 2
+    memory: 4
+    timeout: 600
+    parent_job_key: null
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+
+  # Job 2: Setup Python Environment
+  setup_environment:
+    name: "Setup Python Environment"
+    description: "Create Python venv and install NeMo Guardrails dependencies"
+    script: "cai_integration/setup_environment.py"
+    kernel: "python3"
+    cpu: 4
+    memory: 8
+    timeout: 1800
+    parent_job_key: "git_sync"
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+
+  # Job 3: Launch Guardrails Server (creates CAI Application)
+  launch_guardrails:
+    name: "Launch Guardrails Server"
+    description: "Create and deploy NeMo Guardrails as CAI Application"
+    script: "cai_integration/launch_guardrails.py"
+    kernel: "python3"
+    cpu: 2
+    memory: 4
+    timeout: 900
+    parent_job_key: "setup_environment"
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    environment:
+      CML_HOST: "${CML_HOST}"
+      CML_API_KEY: "${CML_API_KEY}"
+      CDSW_PROJECT_ID: "${CDSW_PROJECT_ID}"
