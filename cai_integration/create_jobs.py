@@ -210,15 +210,10 @@ class JobManager:
         print("\n" + "=" * 70)
         print("✅ Job Creation Complete!")
         print("=" * 70)
-        print("\nJob IDs:")
-        for key, job_id in job_ids.items():
-            print(f"  {key}: {job_id}")
+        print(f"\n✅ Created/verified {len(job_ids)} jobs")
 
-        # Save job IDs for next step
-        output_file = "/tmp/job_ids.json"
-        with open(output_file, "w") as f:
-            json.dump(job_ids, f, indent=2)
-        print(f"\nJob IDs saved to {output_file}")
+        print(f"\n💡 To trigger jobs, run:")
+        print(f"   python3 cai_integration/trigger_jobs.py --project-id {project_id}")
 
         return True
 

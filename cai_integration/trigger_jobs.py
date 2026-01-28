@@ -3,7 +3,7 @@
 Trigger and monitor CAI job execution.
 
 This script:
-1. Loads job IDs from create_jobs.py output
+1. Looks up jobs by name from jobs_config.yaml
 2. Triggers only the root job (jobs with parent_job_key are auto-triggered by CAI)
 3. Monitors root job execution and reports status
 4. Child jobs with dependencies auto-trigger when parent succeeds
@@ -84,6 +84,25 @@ class JobRunner:
         with open(config_path) as f:
             return yaml.safe_load(f)
 
+    def list_jobs(self, project_id: str) -> Dict[str, str]:
+        """List all jobs in a project and return name -> ID mapping."""
+        result = self.make_request("GET", f"projects/{project_id}/jobs")
+
+        if result:
+            jobs = {}
+            for job in result.get("jobs", []):
+                job_name = job.get("name", "")
+                job_id = job.get("id", "")
+                if job_name and job_id:
+                    jobs[job_name] = job_id
+            return jobs
+        return {}
+
+    def get_job_id_by_name(self, project_id: str, job_name: str) -> Optional[str]:
+        """Get job ID by job name."""
+        jobs = self.list_jobs(project_id)
+        return jobs.get(job_name)
+
     def trigger_job(self, project_id: str, job_id: str) -> Optional[str]:
         """Trigger a job run."""
         result = self.make_request("POST", f"projects/{project_id}/jobs/{job_id}/runs")
@@ -94,13 +113,9 @@ class JobRunner:
 
         return None
 
-    def get_job_run_status(
-        self, project_id: str, job_id: str, run_id: str
-    ) -> Optional[Dict]:
+    def get_job_run_status(self, project_id: str, job_id: str, run_id: str) -> Optional[Dict]:
         """Get job run status."""
-        result = self.make_request(
-            "GET", f"projects/{project_id}/jobs/{job_id}/runs/{run_id}"
-        )
+        result = self.make_request("GET", f"projects/{project_id}/jobs/{job_id}/runs/{run_id}")
         return result
 
     def wait_for_job_completion(
@@ -151,9 +166,7 @@ class JobRunner:
                 return job_key
         return None
 
-    def run(
-        self, project_id: str, jobs_config_path: str = None, job_ids_path: str = None
-    ) -> bool:
+    def run(self, project_id: str, jobs_config_path: str = None) -> bool:
         """Execute job pipeline by triggering root job only.
 
         Note: Jobs with parent_job_key dependencies are automatically triggered
@@ -162,7 +175,6 @@ class JobRunner:
         Args:
             project_id: CAI project ID
             jobs_config_path: Path to jobs configuration YAML
-            job_ids_path: Path to job IDs JSON file
 
         Returns:
             True if root job triggered successfully, False otherwise
@@ -174,28 +186,26 @@ class JobRunner:
         # Load configuration
         config = self.load_jobs_config(jobs_config_path)
 
-        # Load job IDs
-        if job_ids_path is None:
-            job_ids_path = "/tmp/job_ids.json"
-
-        try:
-            with open(job_ids_path) as f:
-                job_ids = json.load(f)
-        except FileNotFoundError:
-            print(f"❌ Job IDs file not found: {job_ids_path}")
-            print("   Run create_jobs.py first")
-            return False
-
         # Find root job (job with no parent)
         root_job_key = self.get_root_job(config)
 
-        if not root_job_key or root_job_key not in job_ids:
-            print(f"❌ Root job not found")
+        if not root_job_key:
+            print(f"❌ Root job not found in configuration")
             return False
 
-        root_job_id = job_ids[root_job_key]
         root_job_config = config.get("jobs", {}).get(root_job_key, {})
         root_job_name = root_job_config.get("name", root_job_key)
+
+        # Look up root job ID by name
+        print(f"\n🔍 Looking up job: {root_job_name}")
+        root_job_id = self.get_job_id_by_name(project_id, root_job_name)
+
+        if not root_job_id:
+            print(f"❌ Job not found in project: {root_job_name}")
+            print("   Make sure jobs are created first (run create_jobs.py)")
+            return False
+
+        print(f"   ✅ Found job ID: {root_job_id}")
 
         # Display job dependency chain
         print(f"\n📋 Job dependency chain:")
@@ -242,13 +252,12 @@ def main():
     parser = argparse.ArgumentParser(description="Trigger and monitor CML jobs")
     parser.add_argument("--project-id", required=True, help="CML project ID")
     parser.add_argument("--jobs-config", help="Path to jobs configuration YAML")
-    parser.add_argument("--job-ids", help="Path to job IDs JSON file")
 
     args = parser.parse_args()
 
     try:
         runner = JobRunner()
-        success = runner.run(args.project_id, args.jobs_config, args.job_ids)
+        success = runner.run(args.project_id, args.jobs_config)
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
         print("\n⚠️  Job execution cancelled by user")
@@ -256,6 +265,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
