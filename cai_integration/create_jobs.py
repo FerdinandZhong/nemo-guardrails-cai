@@ -63,6 +63,12 @@ class JobManager:
                         return {}
                 return {}
             else:
+                # For 400 errors about missing scripts, don't print error (expected on initial deployment)
+                if (
+                    response.status_code == 400
+                    and "not found in project directory" in response.text
+                ):
+                    return None
                 print(f"❌ API Error ({response.status_code}): {response.text[:200]}")
                 return None
 
@@ -108,11 +114,12 @@ class JobManager:
     ) -> Optional[str]:
         """Create a new job in the CML project."""
         job_name = job_config["name"]
+        script_path = job_config["script"]
         print(f"   📝 Creating job: {job_name}")
 
         job_data = {
             "name": job_name,
-            "script": job_config["script"],
+            "script": script_path,
             "cpu": job_config.get("cpu", 4),
             "memory": job_config.get("memory", 16),
             "timeout": job_config.get("timeout", 600),
@@ -136,8 +143,10 @@ class JobManager:
             print(f"   ✅ Job created: {job_id}")
             return job_id
         else:
-            print(f"   ⚠️  Job creation failed: {job_name}")
-            print(f"      Script file may not exist in project: {job_config['script']}")
+            # Job creation failed - likely script doesn't exist
+            # This is common for git_sync.sh on initial deployment
+            print(f"   ⏭️  Skipping: {job_name}")
+            print(f"      Script not in project yet: {script_path}")
             return None
 
     def create_jobs_from_config(self, project_id: str, config_path: str = None) -> Dict[str, str]:
@@ -188,12 +197,7 @@ class JobManager:
                 job_id = self.create_job(project_id, job_config, parent_job_id)
                 if job_id:
                     job_ids[job_key] = job_id
-                else:
-                    # Job creation failed (likely script doesn't exist yet)
-                    # This is okay for optional jobs like git_sync on initial deployment
-                    print(
-                        f"   ⏭️  Skipping job: {job_name} (will be available after first deployment)"
-                    )
+                # If creation fails, error message already printed by create_job
 
             processed.add(job_key)
 
