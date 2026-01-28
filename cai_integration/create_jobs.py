@@ -107,10 +107,11 @@ class JobManager:
         parent_job_id: Optional[str] = None,
     ) -> Optional[str]:
         """Create a new job in the CML project."""
-        print(f"   📝 Creating job: {job_config['name']}")
+        job_name = job_config["name"]
+        print(f"   📝 Creating job: {job_name}")
 
         job_data = {
-            "name": job_config["name"],
+            "name": job_name,
             "script": job_config["script"],
             "cpu": job_config.get("cpu", 4),
             "memory": job_config.get("memory", 16),
@@ -134,8 +135,10 @@ class JobManager:
             job_id = result.get("id")
             print(f"   ✅ Job created: {job_id}")
             return job_id
-
-        return None
+        else:
+            print(f"   ⚠️  Job creation failed: {job_name}")
+            print(f"      Script file may not exist in project: {job_config['script']}")
+            return None
 
     def create_jobs_from_config(self, project_id: str, config_path: str = None) -> Dict[str, str]:
         """Create all jobs from configuration."""
@@ -185,6 +188,12 @@ class JobManager:
                 job_id = self.create_job(project_id, job_config, parent_job_id)
                 if job_id:
                     job_ids[job_key] = job_id
+                else:
+                    # Job creation failed (likely script doesn't exist yet)
+                    # This is okay for optional jobs like git_sync on initial deployment
+                    print(
+                        f"   ⏭️  Skipping job: {job_name} (will be available after first deployment)"
+                    )
 
             processed.add(job_key)
 

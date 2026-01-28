@@ -201,11 +201,32 @@ class JobRunner:
         root_job_id = self.get_job_id_by_name(project_id, root_job_name)
 
         if not root_job_id:
-            print(f"❌ Job not found in project: {root_job_name}")
-            print("   Make sure jobs are created first (run create_jobs.py)")
-            return False
+            print(f"⚠️  Root job not found: {root_job_name}")
+            print(f"   This is expected on initial deployment if script file doesn't exist yet")
+            print(f"   Looking for first available job to trigger...")
 
-        print(f"   ✅ Found job ID: {root_job_id}")
+            # Try to find first available job (usually setup_environment)
+            all_jobs = self.list_jobs(project_id)
+            if not all_jobs:
+                print(f"❌ No jobs found in project")
+                print("   Make sure jobs are created first (run create_jobs.py)")
+                return False
+
+            # Find first job that exists
+            for job_key, job_config in config.get("jobs", {}).items():
+                job_name = job_config.get("name", job_key)
+                if job_name in all_jobs:
+                    root_job_name = job_name
+                    root_job_id = all_jobs[job_name]
+                    root_job_config = job_config
+                    print(f"   ✅ Using alternative root job: {root_job_name}")
+                    break
+
+            if not root_job_id:
+                print(f"❌ No available jobs found")
+                return False
+        else:
+            print(f"   ✅ Found job ID: {root_job_id}")
 
         # Display job dependency chain
         print(f"\n📋 Job dependency chain:")

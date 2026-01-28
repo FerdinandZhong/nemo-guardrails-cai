@@ -16,6 +16,12 @@
 # - git_sync (root) → setup_environment → launch_guardrails (child)
 # - When root job succeeds, child jobs auto-trigger automatically
 # - We only trigger the root job via trigger_jobs.py
+#
+# Note on git_sync:
+# - git_sync may fail to create on initial deployment (script doesn't exist yet)
+# - This is expected and okay - project is cloned during setup_project.py
+# - After first deployment, git_sync.sh exists and can be used for updates
+# - trigger_jobs.py will automatically skip to setup_environment if git_sync doesn't exist
 
 jobs:
   # Job 1: Sync Git Repository (ROOT JOB)
