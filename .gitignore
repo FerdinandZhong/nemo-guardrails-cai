@@ -8,7 +8,9 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# Note: build/ is ignored by default for Python packages
+# but our build/ directory contains source code (scripts)
+# so we use more specific ignores below
 develop-eggs/
 dist/
 downloads/
@@ -137,3 +139,12 @@ Thumbs.db
 *.log
 ray_cluster_info.json
 .cdsw/
+
+# Build directories - but include source scripts
+# We ignore the build artifacts but track build/*.py and build/shell_scripts/
+!/build/
+!/build/*.py
+!/build/shell_scripts/
+/build/.venv/
+/build/node_modules/
+/build/dist/
