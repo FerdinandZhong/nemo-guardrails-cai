@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-Trigger and monitor CML job execution.
+Trigger and monitor CAI job execution.
 
 This script:
 1. Loads job IDs from create_jobs.py output
-2. Triggers jobs in dependency order
-3. Monitors execution and reports status
-4. Handles idempotency (skips already-successful jobs)
+2. Triggers only the root job (jobs with parent_job_key are auto-triggered by CAI)
+3. Monitors root job execution and reports status
+4. Child jobs with dependencies auto-trigger when parent succeeds
+
+Pattern: Jobs with parent_job_key dependencies are automatically triggered
+by CAI when the parent succeeds. We only need to trigger the root job.
 """
 
 import argparse
@@ -134,36 +137,38 @@ class JobRunner:
         print(f"❌ Timeout waiting for job completion ({timeout}s)")
         return False
 
-    def get_job_execution_order(self, config: Dict) -> List[str]:
-        """Determine job execution order based on dependencies."""
-        jobs = config["jobs"]
-        order = []
-        processed = set()
+    def get_root_job(self, config: Dict) -> Optional[str]:
+        """Find root job (job with no parent).
 
-        def add_job_with_deps(job_key: str):
-            if job_key in processed:
-                return
+        Args:
+            config: Jobs configuration dictionary
 
-            job_config = jobs[job_key]
-            parent_key = job_config.get("parent_job_key")
-
-            if parent_key:
-                add_job_with_deps(parent_key)
-
-            order.append(job_key)
-            processed.add(job_key)
-
-        for job_key in jobs.keys():
-            add_job_with_deps(job_key)
-
-        return order
+        Returns:
+            Root job key, or None if not found
+        """
+        for job_key, job_config in config.get("jobs", {}).items():
+            if job_config.get("parent_job_key") is None:
+                return job_key
+        return None
 
     def run(
         self, project_id: str, jobs_config_path: str = None, job_ids_path: str = None
     ) -> bool:
-        """Execute job pipeline."""
+        """Execute job pipeline by triggering root job only.
+
+        Note: Jobs with parent_job_key dependencies are automatically triggered
+        by CAI when the parent succeeds. We only need to trigger the root job.
+
+        Args:
+            project_id: CAI project ID
+            jobs_config_path: Path to jobs configuration YAML
+            job_ids_path: Path to job IDs JSON file
+
+        Returns:
+            True if root job triggered successfully, False otherwise
+        """
         print("=" * 70)
-        print("🚀 CML Job Execution for NeMo Guardrails")
+        print("🚀 NeMo Guardrails Job Execution")
         print("=" * 70)
 
         # Load configuration
@@ -181,53 +186,53 @@ class JobRunner:
             print("   Run create_jobs.py first")
             return False
 
-        # Get execution order
-        execution_order = self.get_job_execution_order(config)
+        # Find root job (job with no parent)
+        root_job_key = self.get_root_job(config)
 
-        print(f"\n📋 Job execution order:")
-        for i, job_key in enumerate(execution_order, 1):
-            job_name = config["jobs"][job_key]["name"]
-            print(f"   {i}. {job_name} ({job_key})")
+        if not root_job_key or root_job_key not in job_ids:
+            print(f"❌ Root job not found")
+            return False
 
-        # Execute jobs in order
-        print("\n" + "=" * 70)
-        print("Executing Jobs")
+        root_job_id = job_ids[root_job_key]
+        root_job_config = config.get("jobs", {}).get(root_job_key, {})
+        root_job_name = root_job_config.get("name", root_job_key)
+
+        # Display job dependency chain
+        print(f"\n📋 Job dependency chain:")
+        for job_key, job_config in config.get("jobs", {}).items():
+            parent_key = job_config.get("parent_job_key")
+            job_name = job_config.get("name", job_key)
+            if parent_key:
+                parent_name = config.get("jobs", {}).get(parent_key, {}).get("name", parent_key)
+                print(f"   {parent_name} → {job_name}")
+            else:
+                print(f"   📍 {job_name} (root)")
+
+        print(f"\n🔷 Triggering root job: {root_job_name}")
+        print(f"   (Child jobs will auto-trigger via CAI dependencies)\n")
+
+        # Trigger root job only
+        run_id = self.trigger_job(project_id, root_job_id)
+
+        if not run_id:
+            print(f"   ❌ Failed to trigger root job\n")
+            return False
+
+        print(f"   ✅ Root job triggered: {run_id}\n")
+
+        # Wait for root job completion
+        timeout = root_job_config.get("timeout", 3600)
+        if not self.wait_for_job_completion(
+            project_id, root_job_id, run_id, root_job_name, timeout
+        ):
+            print(f"❌ Root job failed: {root_job_name}")
+            return False
+
         print("=" * 70)
-
-        for job_key in execution_order:
-            job_config = config["jobs"][job_key]
-            job_name = job_config["name"]
-            job_id = job_ids.get(job_key)
-
-            if not job_id:
-                print(f"❌ Job ID not found for: {job_key}")
-                return False
-
-            print(f"\n🚀 Triggering job: {job_name}")
-
-            # Trigger job
-            run_id = self.trigger_job(project_id, job_id)
-
-            if not run_id:
-                print(f"❌ Failed to trigger job: {job_name}")
-                return False
-
-            print(f"   Run ID: {run_id}")
-
-            # Wait for completion
-            timeout = job_config.get("timeout", 3600)
-            success = self.wait_for_job_completion(
-                project_id, job_id, run_id, job_name, timeout
-            )
-
-            if not success:
-                print(f"\n❌ Job '{job_name}' failed")
-                print("   Pipeline execution stopped")
-                return False
-
-        print("\n" + "=" * 70)
-        print("✅ All Jobs Completed Successfully!")
+        print("✅ Root Job Completed Successfully!")
         print("=" * 70)
+        print("\n💡 Note: Child jobs with dependencies will auto-trigger in CAI.")
+        print("   Monitor them in the CAI UI: Jobs > Job Runs\n")
 
         return True
 
