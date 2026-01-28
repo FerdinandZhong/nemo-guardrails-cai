@@ -67,17 +67,33 @@ class CAIClient:
   - `GET /projects/{id}/jobs/{jobId}/runs/{runId}` - Get run status
 
 ### 4. **launch_guardrails.py** ✅
-- **Purpose**: Create CAI Application for NeMo Guardrails server
+- **Purpose**: Create CAI Application for NeMo Guardrails server (CAI Job 3)
+- **Entry Point**: Called directly as `python3 cai_integration/launch_guardrails.py` from CAI Job
 - **Pattern**: Direct REST API calls via `make_request()`
 - **Endpoints**:
   - `POST /projects/{id}/applications` - Create application
   - `GET /projects/{id}/applications/{id}` - Get application status
+- **Startup script**: Delegates to `app_startup.py` (see below)
 - **Changes from caikit version**:
   - Removed: `from caikit import CMLClient`
   - Added: `make_request()` method for REST API
   - Updated: `create_application()` to use HTTP POST
   - Updated: `wait_for_app_ready()` to use HTTP GET polling
   - Updated: `save_connection_info()` to work with dictionary responses
+
+### 5. **app_startup.py** ✅
+- **Purpose**: Entry point for CAI Application
+- **Executes**: Activates venv and launches `app_startup.sh`
+- **Location**: `/home/cdsw/cai_integration/app_startup.py`
+- **Usage**: Set as the startup script when creating CAI Application
+
+### 6. **app_startup.sh** ✅
+- **Purpose**: Environment configuration and guardrails server startup
+- **Process**:
+  1. Activates Python virtual environment from setup_environment job
+  2. Sets environment variables (config path, log level)
+  3. Runs: `python -m nemoguardrails server`
+- **Location**: `/home/cdsw/cai_integration/app_startup.sh`
 
 ## API Endpoints Reference
 
@@ -114,6 +130,25 @@ GET    /projects/{projectId}/applications              # List applications
 POST   /projects/{projectId}/applications              # Create application
 GET    /projects/{projectId}/applications/{appId}      # Get application status
 ```
+
+## Simplified Application Startup Architecture
+
+The CAI Application startup has been simplified to remove unnecessary layers:
+
+```
+CAI Application
+  └─> app_startup.py (Python entry point)
+       └─> app_startup.sh (Bash configuration & startup)
+            ├─ Activate virtual environment
+            ├─ Set environment variables
+            └─ python -m nemoguardrails server
+```
+
+**Key benefits:**
+- Direct Python entry point without wrapping layers
+- Bash script handles environment setup cleanly
+- Virtual environment activated in the same process
+- Simple, transparent startup flow
 
 ## Response Handling
 
@@ -156,6 +191,9 @@ if not project_id:
 - [x] Verify setup_project.py uses REST API
 - [x] Verify create_jobs.py uses REST API
 - [x] Verify trigger_jobs.py uses REST API
+- [x] Simplify application startup architecture
+- [x] Create app_startup.py entry point
+- [x] Create app_startup.sh with environment setup
 - [ ] Test in CAI environment
 - [ ] Update deployment documentation
 
@@ -187,6 +225,34 @@ grep -r "caikit\|CMLClient" cai_integration/
    python3 cai_integration/launch_guardrails.py
    ```
 
+## Deployment Process
+
+### Step-by-step flow:
+
+1. **User runs**: `trigger_jobs.py --project-id <id>`
+   - Triggers the "Git Repository Sync" job (root job)
+
+2. **CAI Job 1: Git Repository Sync**
+   - Runs `git pull` or clones repository
+   - Automatically triggers Job 2 on success
+
+3. **CAI Job 2: Setup Python Environment**
+   - Runs `setup_environment.py`
+   - Creates `.venv` and installs nemoguardrails
+   - Automatically triggers Job 3 on success
+
+4. **CAI Job 3: Launch Guardrails Server**
+   - Runs `python3 cai_integration/launch_guardrails.py`
+   - Creates CAI Application via REST API
+   - Waits for application to start
+   - Saves connection info to JSON file
+
+5. **CAI Application runs with simplified startup:**
+   - Entry script: `app_startup.py` (simple Python wrapper)
+   - Calls: `app_startup.sh` (environment setup)
+   - Activates `.venv` (from Job 2)
+   - Runs: `python -m nemoguardrails server`
+
 ## Benefits
 
 1. **No External Dependencies**: Only uses standard `requests` library
@@ -194,6 +260,7 @@ grep -r "caikit\|CMLClient" cai_integration/
 3. **Flexibility**: Can easily extend with new API endpoints
 4. **Maintainability**: Pattern is consistent across all integration scripts
 5. **Robustness**: Better error handling and response validation
+6. **Simplified Startup**: Clean separation between job orchestration and application startup
 
 ## References
 

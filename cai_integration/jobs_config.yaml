@@ -6,10 +6,9 @@
 # 3. launch_guardrails: Start the guardrails server as a CAI Application
 #
 # Note on Script Entry Points:
-# - setup_environment uses Python directly (creates the venv)
-# - launch_guardrails uses Python job entry point (which activates venv via bash wrapper)
-#   This follows CAI best practices and ensures clean virtual environment activation.
-# - Dependencies created in setup_environment are available to launch_guardrails via venv
+# - git_sync uses Bash (pulls repository)
+# - setup_environment uses Python (creates the venv)
+# - launch_guardrails uses Python (creates CAI Application via REST API)
 #
 # Job Dependencies (handled automatically by CAI):
 # - git_sync (root) → setup_environment → launch_guardrails (child)
@@ -53,11 +52,11 @@ jobs:
     timeout: 1800
     parent_job_key: "git_sync"
 
-  # Job 3: Launch Guardrails Server (uses venv from setup_environment)
+  # Job 3: Launch Guardrails Server (creates CAI Application)
   launch_guardrails:
     name: "Launch Guardrails Server"
-    description: "Deploy NeMo Guardrails as CAI Application (runs in venv via bash wrapper)"
-    script: "cai_integration/launch_guardrails_job.py"
+    description: "Create and deploy NeMo Guardrails as CAI Application"
+    script: "python3 cai_integration/launch_guardrails.py"
     kernel: "python3"
     cpu: 2
     memory: 4

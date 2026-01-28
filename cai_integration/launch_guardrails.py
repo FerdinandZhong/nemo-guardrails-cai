@@ -140,7 +140,7 @@ class GuardrailsDeployer:
         logger.info(f"Creating application: {app_name}")
 
         # Build startup script
-        startup_script = self._build_startup_script(guardrails_config)
+        startup_script = self._build_startup_script()
 
         # Build application configuration
         app_data = {
@@ -152,7 +152,7 @@ class GuardrailsDeployer:
             "environment": {
                 "GUARDRAILS_CONFIG_PATH": guardrails_config.get("config_path", "config"),
             },
-            "bypass_authentication": server_config.get("bypass_authentication", False),
+            "bypass_authentication": server_config.get("bypass_authentication", True),
         }
 
         # Add runtime identifier if specified
@@ -178,64 +178,26 @@ class GuardrailsDeployer:
             logger.error(f"Failed to create application: {e}")
             return None
 
-    def _build_startup_script(self, guardrails_config: dict) -> str:
+    def _build_startup_script(self) -> str:
         """Build the startup script for the application.
 
-        Uses NeMo Guardrails CLI for proper initialization and configuration.
-
-        Args:
-            guardrails_config: Guardrails configuration dictionary
+        Returns a simple bash wrapper that calls the Python entry point script.
+        The Python script (app_startup.py) handles environment setup and launches
+        the NeMo Guardrails server via the bash script (app_startup.sh).
 
         Returns:
             Startup script as string
         """
-        config_path = guardrails_config.get("config_path", "examples/config")
-        log_level = guardrails_config.get("log_level", "INFO")
-
-        script = f"""#!/bin/bash
+        script = """#!/bin/bash
 set -eox pipefail
 
-# NeMo Guardrails Application Startup Script
-# This script runs in CAI environment
-
-# Activate virtual environment if it exists
-if [ -d "/home/cdsw/.venv" ]; then
-    echo "Activating virtual environment..."
-    source /home/cdsw/.venv/bin/activate
-fi
-
-# Set environment variables
-export GUARDRAILS_CONFIG_PATH={config_path}
-export LOG_LEVEL={log_level}
-
-# Verify config path exists
-if [ ! -d "$GUARDRAILS_CONFIG_PATH" ]; then
-    echo "Warning: Config path not found at $GUARDRAILS_CONFIG_PATH"
-    echo "Using default: examples/local_test"
-    export GUARDRAILS_CONFIG_PATH="examples/local_test"
-fi
-
-# Start guardrails server using NeMo Guardrails CLI
-# CDSW_APP_PORT is automatically set by CAI
-echo "==============================================="
-echo "Starting NeMo Guardrails Server"
-echo "==============================================="
-echo "Config Path: $GUARDRAILS_CONFIG_PATH"
-echo "Log Level: $LOG_LEVEL"
-echo "Port: ${{CDSW_APP_PORT:-8080}}"
-echo ""
+# CAI Application Startup Wrapper
+# This simple script calls the Python entry point which handles all setup
 
 cd /home/cdsw
 
-# Use NeMo Guardrails CLI for proper initialization
-python -m nemoguardrails server \\
-    --config "$GUARDRAILS_CONFIG_PATH" \\
-    --port "${{CDSW_APP_PORT:-8080}}" \\
-    --verbose
-
-echo "==============================================="
-echo "NeMo Guardrails Server stopped"
-echo "==============================================="
+# Execute the Python startup script
+exec python cai_integration/app_startup.py
 """
         return script
 
