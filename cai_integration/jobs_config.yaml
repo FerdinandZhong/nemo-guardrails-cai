@@ -13,24 +13,15 @@
 # - launch_guardrails: Python script that creates CAI Application via REST API
 #
 # Job Dependencies (handled automatically by CAI):
-# - git_sync (root) → setup_environment → launch_guardrails (child)
+# - setup_environment (root) → launch_guardrails (child)
 # - When root job succeeds, child jobs auto-trigger automatically
 # - We only trigger the root job via trigger_jobs.py
+#
+# Note: git_sync job is optional and can be added later for updates
+# Initial deployment doesn't need git_sync since setup_project.py clones the repo
 
 jobs:
-  # Job 1: Sync Git Repository (ROOT JOB)
-  git_sync:
-    name: "Git Repository Sync"
-    description: "Clone or sync repository from GitHub"
-    script: "cai_integration/git_sync.sh"
-    kernel: "python3"
-    cpu: 2
-    memory: 4
-    timeout: 600
-    parent_job_key: null
-    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
-
-  # Job 2: Setup Python Environment
+  # Job 1: Setup Python Environment (ROOT JOB for initial deployment)
   setup_environment:
     name: "Setup Python Environment"
     description: "Create Python venv and install NeMo Guardrails dependencies"
@@ -39,10 +30,10 @@ jobs:
     cpu: 4
     memory: 8
     timeout: 1800
-    parent_job_key: "git_sync"
+    parent_job_key: null
     runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
 
-  # Job 3: Launch Guardrails Server (creates CAI Application)
+  # Job 2: Launch Guardrails Server (creates CAI Application)
   launch_guardrails:
     name: "Launch Guardrails Server"
     description: "Create and deploy NeMo Guardrails as CAI Application"

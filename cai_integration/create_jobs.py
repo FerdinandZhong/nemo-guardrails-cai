@@ -107,11 +107,13 @@ class JobManager:
         parent_job_id: Optional[str] = None,
     ) -> Optional[str]:
         """Create a new job in the CML project."""
-        print(f"   📝 Creating job: {job_config['name']}")
+        job_name = job_config["name"]
+        script_path = job_config["script"]
+        print(f"   📝 Creating job: {job_name}")
 
         job_data = {
-            "name": job_config["name"],
-            "script": job_config["script"],
+            "name": job_name,
+            "script": script_path,
             "cpu": job_config.get("cpu", 4),
             "memory": job_config.get("memory", 16),
             "timeout": job_config.get("timeout", 600),
@@ -134,8 +136,9 @@ class JobManager:
             job_id = result.get("id")
             print(f"   ✅ Job created: {job_id}")
             return job_id
-
-        return None
+        else:
+            print(f"   ❌ Failed to create job: {job_name}")
+            return None
 
     def create_jobs_from_config(self, project_id: str, config_path: str = None) -> Dict[str, str]:
         """Create all jobs from configuration."""
@@ -185,6 +188,7 @@ class JobManager:
                 job_id = self.create_job(project_id, job_config, parent_job_id)
                 if job_id:
                     job_ids[job_key] = job_id
+                # If creation fails, error message already printed by create_job
 
             processed.add(job_key)
 
@@ -210,15 +214,10 @@ class JobManager:
         print("\n" + "=" * 70)
         print("✅ Job Creation Complete!")
         print("=" * 70)
-        print("\nJob IDs:")
-        for key, job_id in job_ids.items():
-            print(f"  {key}: {job_id}")
+        print(f"\n✅ Created/verified {len(job_ids)} jobs")
 
-        # Save job IDs for next step
-        output_file = "/tmp/job_ids.json"
-        with open(output_file, "w") as f:
-            json.dump(job_ids, f, indent=2)
-        print(f"\nJob IDs saved to {output_file}")
+        print(f"\n💡 To trigger jobs, run:")
+        print(f"   python3 cai_integration/trigger_jobs.py --project-id {project_id}")
 
         return True
 
