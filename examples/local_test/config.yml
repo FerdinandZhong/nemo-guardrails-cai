@@ -1,0 +1,20 @@
+# Simple NeMo Guardrails Configuration for Local Testing
+# This uses default built-in rails from NeMo Guardrails
+
+# Define the LLM model
+models:
+  - type: main
+    engine: openai
+    model: gpt-3.5-turbo
+
+# Use built-in rails (no custom .co files needed)
+rails:
+  # Input rails - check user input before processing
+  input:
+    flows:
+      - self check input  # Built-in: checks for jailbreaks, off-topic, etc.
+
+  # Output rails - check LLM output before returning
+  output:
+    flows:
+      - self check output  # Built-in: checks response safety

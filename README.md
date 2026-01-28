@@ -64,6 +64,26 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
+### Test Locally First (Recommended)
+
+Before deploying, test the guardrails locally with default rails:
+
+```bash
+# 1. Install NeMo Guardrails
+pip install nemoguardrails
+
+# 2. Set your OpenAI API key
+export OPENAI_API_KEY='your-key-here'
+
+# 3. Start test server
+python examples/local_test/test_server.py
+
+# 4. In another terminal, run tests
+python examples/local_test/test_client.py
+```
+
+See [Local Testing Guide](examples/local_test/README.md) for detailed instructions.
+
 ### Basic Usage
 
 ```python

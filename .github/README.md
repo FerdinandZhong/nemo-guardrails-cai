@@ -135,6 +135,129 @@ git push origin test/ci-workflow
 gh workflow run deploy-guardrails.yml
 ```
 
+## Detailed Workflow Organization
+
+### CI Workflow Execution Model
+
+**Trigger Events:**
+- ✅ `push` to `main` or `develop` branches
+- ✅ `pull_request` targeting `main` or `develop`
+
+**Job Execution:** All jobs run **in parallel** (fastest feedback)
+```
+Event: Push/PR
+    ↓
+┌────────────────────────────────────────────┐
+│ Run in parallel:                           │
+│  • lint (10 min) - Black, Ruff, MyPy       │
+│  • test (20 min) - Py 3.9/3.10/3.11        │
+│  • build (10 min) - Package validation     │
+│  • docs (10 min) - Documentation check     │
+└────────────────────────────────────────────┘
+    ↓
+Total time: ~20 minutes (not 50!)
+```
+
+**Test Matrix Strategy:**
+```yaml
+strategy:
+  matrix:
+    python-version: ['3.9', '3.10', '3.11']
+```
+- Each version runs in parallel
+- Catches compatibility issues
+- Coverage uploaded only for 3.11
+
+### Deploy Workflow Execution Model
+
+**Trigger:** Manual via GitHub UI or CLI
+
+**Parameters:**
+```
+force_rebuild: boolean (false)
+enable_local_models: boolean (false)
+```
+
+**Job Execution:** Sequential chain with dependencies
+```
+Manual Trigger (GitHub Actions UI)
+    ↓
+1. setup-project (30 min)
+   - Creates CAI project
+   - Outputs: project_id
+    ↓
+2. create-jobs (5 min)
+   - Depends on: setup-project
+   - Uses: project_id from previous job
+   - Reads: cai_integration/jobs_config.yaml
+    ↓
+3. trigger-deployment (90 min)
+   - Depends on: setup-project, create-jobs
+   - Passes: force_rebuild, enable_local_models flags
+   - Waits for CAI jobs to complete
+    ↓
+4. verify-deployment (15 min)
+   - Depends on: trigger-deployment
+   - Only runs if: trigger-deployment succeeded
+   - Reads: guardrails_info.json
+    ↓
+Total time: ~140 minutes
+```
+
+**Output Data Flow:**
+```yaml
+setup-project:
+  outputs:
+    project_id: ${{ steps.setup.outputs.project_id }}
+
+create-jobs:
+  needs: setup-project
+  steps:
+    - uses: project_id from setup-project
+      run: create_jobs.py --project-id ${{ needs.setup-project.outputs.project_id }}
+```
+
+### Publish Workflow Execution Model
+
+**Trigger Options:**
+
+Option 1: Automatic (Release)
+```
+1. Create GitHub Release
+    ↓
+2. GitHub detects: release.types = [published]
+    ↓
+3. Automatically runs publish.yml
+    ↓
+4. Publishes to official PyPI
+```
+
+Option 2: Manual (Test PyPI)
+```
+GitHub UI → Actions → Publish to PyPI → Run workflow
+    ↓
+Input: version = "0.1.0-beta"
+    ↓
+Conditional: if github.event_name == 'workflow_dispatch'
+    ↓
+Updates pyproject.toml version
+    ↓
+Publishes to Test PyPI
+```
+
+**Conditional Publishing Logic:**
+```yaml
+# This step ONLY runs on manual trigger
+- name: Publish to Test PyPI
+  if: github.event_name == 'workflow_dispatch'
+  run: twine upload --repository testpypi dist/*
+
+# This step ONLY runs on release
+- name: Publish to PyPI
+  if: github.event_name == 'release'
+  run: twine upload dist/*
+```
+
 ## Workflow Diagram
 
 ```
@@ -144,26 +267,35 @@ gh workflow run deploy-guardrails.yml
              │
              ├─► Push/PR to main/develop
              │   ↓
-             │   CI Workflow (ci.yml)
-             │   ├─► Lint (Black, Ruff, MyPy)
-             │   ├─► Test (pytest on Py 3.9-3.11)
-             │   ├─► Build (package creation)
-             │   └─► Docs (documentation check)
-             │
-             ├─► Manual: Deploy to CAI
+             │   CI Workflow (ci.yml) - AUTOMATIC
+             │   ├─► Lint (10 min) ────┐
+             │   ├─► Test (20 min) ────┼─► Run in PARALLEL
+             │   ├─► Build (10 min) ───┤   Total: 20 min
+             │   └─► Docs (10 min) ────┘
              │   ↓
-             │   Deploy Workflow (deploy-guardrails.yml)
-             │   ├─► Setup Project (create/find CAI project)
-             │   ├─► Create Jobs (define deployment pipeline)
-             │   ├─► Trigger Deployment (run jobs)
-             │   └─► Verify Deployment (test endpoint)
+             │   ✅ CI Pass → Can merge PR
              │
-             └─► Release Published
+             ├─► Manual: Deploy to CAI (Workflow Dispatch)
+             │   ↓
+             │   Deploy Workflow (deploy-guardrails.yml) - MANUAL
+             │   ├─► Setup Project (30 min)
+             │   │   ↓ (outputs: project_id)
+             │   ├─► Create Jobs (5 min)
+             │   │   ↓ (sequential)
+             │   ├─► Trigger Deployment (90 min)
+             │   │   ↓ (sequential)
+             │   └─► Verify Deployment (15 min)
+             │   ↓
+             │   ✅ Deployment Complete
+             │
+             └─► Release Published OR Manual Publish
                  ↓
-                 Publish Workflow (publish.yml)
-                 ├─► Build Package
-                 ├─► Check Package
-                 └─► Publish to PyPI
+                 Publish Workflow (publish.yml) - AUTO/MANUAL
+                 ├─► Build Package (5 min)
+                 ├─► Check Package (2 min)
+                 └─► Publish to PyPI/Test PyPI (5 min)
+                 ↓
+                 ✅ Published to PyPI
 ```
 
 ## CAI Deployment Flow
@@ -301,9 +433,149 @@ twine check dist/*
 - CodeQL scanning (can be added)
 - Security advisories for vulnerabilities
 
+## Workflow Trigger Reference
+
+### CI Workflow (`ci.yml`)
+| Trigger | Type | When | Action |
+|---------|------|------|--------|
+| push | Automatic | New code on main/develop | Run tests, lint, build |
+| pull_request | Automatic | PR opened/updated to main/develop | Block merge if fail |
+| No manual trigger | - | N/A | Always automatic |
+
+**Code Location:**
+```yaml
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+```
+
+### Deploy Workflow (`deploy-guardrails.yml`)
+| Trigger | Type | How | Parameters |
+|---------|------|-----|------------|
+| workflow_dispatch | Manual | GitHub UI or CLI | force_rebuild, enable_local_models |
+| No automatic trigger | - | Must be manual | - |
+
+**Manual Trigger via GitHub UI:**
+1. Go to `Actions` tab
+2. Select `Deploy NeMo Guardrails to CAI`
+3. Click `Run workflow` button
+4. Select options (optional)
+
+**Manual Trigger via CLI:**
+```bash
+gh workflow run deploy-guardrails.yml \
+  -f force_rebuild=false \
+  -f enable_local_models=false
+```
+
+**Code Location:**
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild'
+        required: false
+        default: false
+        type: boolean
+      enable_local_models:
+        description: 'Enable local models'
+        required: false
+        default: false
+        type: boolean
+```
+
+### Publish Workflow (`publish.yml`)
+| Trigger | Type | When | Destination |
+|---------|------|------|-------------|
+| release published | Automatic | Create GitHub Release | PyPI (official) |
+| workflow_dispatch | Manual | Manual trigger | Test PyPI |
+
+**Automatic Trigger (Release):**
+1. Create new Release on GitHub
+2. Automatically publishes to PyPI
+3. `if: github.event_name == 'release'`
+
+**Manual Trigger (Test PyPI):**
+1. GitHub UI → `Actions` → `Publish to PyPI`
+2. Enter version number
+3. Publishes to Test PyPI
+4. `if: github.event_name == 'workflow_dispatch'`
+
+**Code Location:**
+```yaml
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish'
+        required: true
+        type: string
+```
+
+## How Workflows Use Secrets
+
+### Secret Storage
+1. Repository Settings → `Secrets and variables` → `Actions`
+2. Add each secret with name and value
+3. Referenced in workflows as `${{ secrets.SECRET_NAME }}`
+
+### CI Workflow
+- **No secrets needed** (runs without authentication)
+
+### Deploy Workflow
+```yaml
+env:
+  CML_HOST: ${{ secrets.CML_HOST }}
+  CML_API_KEY: ${{ secrets.CML_API_KEY }}
+  GH_PAT: ${{ secrets.GH_PAT }}
+```
+
+### Publish Workflow
+```yaml
+env:
+  TWINE_USERNAME: __token__
+  TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}  # Automatic
+  TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}  # Manual
+```
+
+## How Workflows Access GitHub Context
+
+### Available Context Variables
+```yaml
+github.repository      # "org/repo"
+github.ref            # "refs/heads/main" or "refs/tags/v1.0.0"
+github.ref_name       # "main" or "v1.0.0"
+github.sha            # commit SHA
+github.event_name     # "push", "pull_request", "release", "workflow_dispatch"
+github.workflow       # workflow file name
+github.event.inputs   # manual input parameters
+```
+
+### Example Usage in Workflows
+```yaml
+# Example 1: Use in log message
+- run: echo "Deploying ${{ github.ref_name }} to CAI"
+
+# Example 2: Conditional logic
+- if: github.event_name == 'release'
+  run: echo "This is a release"
+
+# Example 3: Access manual inputs
+- run: |
+    python deploy.py \
+      --force-rebuild=${{ github.event.inputs.force_rebuild }}
+```
+
 ## Additional Resources
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Workflow Triggers Reference](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows)
+- [GitHub CLI Manual](https://cli.github.com/manual)
 - [CAI Integration Guide](../cai_integration/README.md)
 - [Deployment Guide](../README.md#deploying-to-cloudera-ai-cml)
 
