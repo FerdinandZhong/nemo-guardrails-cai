@@ -6,9 +6,11 @@
 # 3. launch_guardrails: Start the guardrails server as a CAI Application
 #
 # Note on Script Entry Points:
-# - git_sync uses Bash (pulls repository)
-# - setup_environment uses Python (creates the venv)
-# - launch_guardrails uses Python (creates CAI Application via REST API)
+# - All scripts must be file paths relative to project root (e.g., "cai_integration/script.py")
+# - CAI API does not support inline scripts or command prefixes
+# - git_sync: Bash script that pulls repository
+# - setup_environment: Python script that creates the venv
+# - launch_guardrails: Python script that creates CAI Application via REST API
 #
 # Job Dependencies (handled automatically by CAI):
 # - git_sync (root) → setup_environment → launch_guardrails (child)
@@ -20,21 +22,7 @@ jobs:
   git_sync:
     name: "Git Repository Sync"
     description: "Clone or sync repository from GitHub"
-    script: |
-      #!/bin/bash
-      set -e
-      cd /home/cdsw
-
-      # Check if repo exists
-      if [ -d ".git" ]; then
-        echo "Repository exists, pulling latest changes..."
-        git pull origin main || git pull origin master
-      else
-        echo "Repository not found, should be cloned during project creation"
-        exit 1
-      fi
-
-      echo "Git sync completed successfully"
+    script: "cai_integration/git_sync.sh"
     kernel: "python3"
     cpu: 2
     memory: 4
@@ -46,7 +34,7 @@ jobs:
   setup_environment:
     name: "Setup Python Environment"
     description: "Create Python venv and install NeMo Guardrails dependencies"
-    script: "python3 cai_integration/setup_environment.py"
+    script: "cai_integration/setup_environment.py"
     kernel: "python3"
     cpu: 4
     memory: 8
@@ -58,7 +46,7 @@ jobs:
   launch_guardrails:
     name: "Launch Guardrails Server"
     description: "Create and deploy NeMo Guardrails as CAI Application"
-    script: "python3 cai_integration/launch_guardrails.py"
+    script: "cai_integration/launch_guardrails.py"
     kernel: "python3"
     cpu: 2
     memory: 4
