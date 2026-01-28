@@ -35,7 +35,9 @@ class GuardrailsConfig:
     log_level: str = "INFO"
     cors_origins: List[str] = field(default_factory=lambda: ["*"])
     additional_config: Dict[str, Any] = field(default_factory=dict)
-    local_models: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # Local model configurations
+    local_models: Dict[str, Dict[str, Any]] = field(
+        default_factory=dict
+    )  # Local model configurations
 
     @classmethod
     def from_yaml(cls, yaml_path: str) -> "GuardrailsConfig":

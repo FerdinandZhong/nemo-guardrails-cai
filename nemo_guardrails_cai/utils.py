@@ -7,14 +7,14 @@ from functools import wraps
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def retry_with_backoff(
     max_retries: int = 3,
     initial_delay: float = 1.0,
     backoff_factor: float = 2.0,
-    exceptions: tuple = (Exception,)
+    exceptions: tuple = (Exception,),
 ) -> Callable:
     """Decorator for retrying functions with exponential backoff.
 
@@ -27,6 +27,7 @@ def retry_with_backoff(
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args, **kwargs) -> T:
@@ -46,13 +47,12 @@ def retry_with_backoff(
                         time.sleep(delay)
                         delay *= backoff_factor
                     else:
-                        logger.error(
-                            f"All {max_retries} retry attempts failed for {func.__name__}"
-                        )
+                        logger.error(f"All {max_retries} retry attempts failed for {func.__name__}")
 
             raise last_exception
 
         return wrapper
+
     return decorator
 
 
@@ -101,7 +101,7 @@ def setup_logging(log_level: str = "INFO", log_file: str = None) -> None:
     logging.basicConfig(
         level=getattr(logging, log_level),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=handlers
+        handlers=handlers,
     )
 
     logger.info(f"Logging configured at {log_level} level")

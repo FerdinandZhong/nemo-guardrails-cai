@@ -115,9 +115,7 @@ async def check_toxicity_local(context: Optional[dict] = None) -> bool:
 
 
 async def check_with_local_model(
-    model_name: str,
-    text: Optional[str] = None,
-    context: Optional[dict] = None
+    model_name: str, text: Optional[str] = None, context: Optional[dict] = None
 ) -> dict:
     """Generic action to check text with any locally hosted model.
 

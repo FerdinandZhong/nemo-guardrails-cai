@@ -43,11 +43,7 @@ class HuggingFaceModelService(BaseModelService):
     def load(self) -> None:
         """Load the HuggingFace model and tokenizer."""
         try:
-            from transformers import (
-                AutoTokenizer,
-                AutoModelForSequenceClassification,
-                pipeline
-            )
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
             logger.info(f"Loading HuggingFace model: {self.model_name}")
 
@@ -64,16 +60,13 @@ class HuggingFaceModelService(BaseModelService):
 
             # Load tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                use_fast=self.use_fast_tokenizer
+                self.model_name, use_fast=self.use_fast_tokenizer
             )
             logger.info("Tokenizer loaded successfully")
 
             # Load model
             if self.task_type == "classification":
-                self.model = AutoModelForSequenceClassification.from_pretrained(
-                    self.model_name
-                )
+                self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
                 logger.info("Classification model loaded successfully")
 
                 # Create pipeline for easier inference
@@ -83,7 +76,7 @@ class HuggingFaceModelService(BaseModelService):
                     tokenizer=self.tokenizer,
                     device=device,
                     max_length=self.max_length,
-                    truncation=True
+                    truncation=True,
                 )
                 logger.info("Pipeline created successfully")
 
@@ -135,13 +128,15 @@ class HuggingFaceModelService(BaseModelService):
                 # Determine if content is safe
                 is_safe = self._determine_safety(label_name, score)
 
-                predictions.append({
-                    "label": label_name,
-                    "score": float(score),
-                    "is_safe": is_safe,
-                    "raw_label": label,
-                    "threshold": self.threshold
-                })
+                predictions.append(
+                    {
+                        "label": label_name,
+                        "score": float(score),
+                        "is_safe": is_safe,
+                        "raw_label": label,
+                        "threshold": self.threshold,
+                    }
+                )
 
             return predictions
 
@@ -182,8 +177,13 @@ class HuggingFaceModelService(BaseModelService):
         """
         # Labels that indicate unsafe content
         unsafe_labels = {
-            "unsafe", "toxic", "jailbreak", "harmful",
-            "negative", "attack", "malicious"
+            "unsafe",
+            "toxic",
+            "jailbreak",
+            "harmful",
+            "negative",
+            "attack",
+            "malicious",
         }
 
         # Check if label indicates unsafe content

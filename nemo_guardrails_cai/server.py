@@ -10,7 +10,6 @@ from nemoguardrails.server import api
 
 from nemo_guardrails_cai.config import GuardrailsConfig
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -42,7 +41,7 @@ class GuardrailsServer:
         # Setup logging
         logging.basicConfig(
             level=getattr(logging, config.log_level),
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
         logger.info(f"Initializing Guardrails Server with config: {config}")
 
@@ -51,9 +50,7 @@ class GuardrailsServer:
         logger.info(f"Loading guardrails config from {self.config.config_path}")
 
         if not self.config.config_path.exists():
-            raise FileNotFoundError(
-                f"Guardrails config path not found: {self.config.config_path}"
-            )
+            raise FileNotFoundError(f"Guardrails config path not found: {self.config.config_path}")
 
         # Initialize local models first (if configured)
         if self.config.local_models:
@@ -93,9 +90,12 @@ class GuardrailsServer:
         # Register custom actions
         try:
             from nemo_guardrails_cai.actions import model_checks
+
             self.rails.register_action(model_checks.check_jailbreak_local, "check_jailbreak_local")
             self.rails.register_action(model_checks.check_toxicity_local, "check_toxicity_local")
-            self.rails.register_action(model_checks.check_with_local_model, "check_with_local_model")
+            self.rails.register_action(
+                model_checks.check_with_local_model, "check_with_local_model"
+            )
             logger.info("Custom model check actions registered")
         except Exception as e:
             logger.warning(f"Could not register custom actions: {e}")
@@ -126,6 +126,7 @@ class GuardrailsServer:
 
         # Start the server
         import uvicorn
+
         uvicorn.run(
             app,
             host=self.config.host,
@@ -146,10 +147,7 @@ class GuardrailsServer:
         if self.rails is None:
             self.initialize_rails()
 
-        response = await self.rails.generate_async(messages=[{
-            "role": "user",
-            "content": prompt
-        }])
+        response = await self.rails.generate_async(messages=[{"role": "user", "content": prompt}])
 
         return response.get("content", "")
 
@@ -185,21 +183,14 @@ def main():
 
     parser = argparse.ArgumentParser(description="NeMo Guardrails Server for CAI")
     parser.add_argument(
-        "--config",
-        type=str,
-        default="server_config.yaml",
-        help="Path to server configuration file"
+        "--config", type=str, default="server_config.yaml", help="Path to server configuration file"
     )
     parser.add_argument(
         "--config-path",
         type=str,
-        help="Path to guardrails configuration directory (overrides config file)"
+        help="Path to guardrails configuration directory (overrides config file)",
     )
-    parser.add_argument(
-        "--port",
-        type=int,
-        help="Server port (overrides config file)"
-    )
+    parser.add_argument("--port", type=int, help="Server port (overrides config file)")
 
     args = parser.parse_args()
 
