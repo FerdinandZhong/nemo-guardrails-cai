@@ -30,11 +30,7 @@ class ModelRegistry:
 
     @classmethod
     def register_model(
-        cls,
-        name: str,
-        model_type: str,
-        config: Dict[str, Any],
-        auto_load: bool = True
+        cls, name: str, model_type: str, config: Dict[str, Any], auto_load: bool = True
     ) -> BaseModelService:
         """Register a new model service.
 
@@ -97,7 +93,7 @@ class ModelRegistry:
                 "type": model.__class__.__name__,
                 "loaded": model.is_loaded(),
                 "model_name": model.model_name,
-                "device": model.device
+                "device": model.device,
             }
             for name, model in cls._models.items()
         }
@@ -138,10 +134,7 @@ class ModelRegistry:
         """
         return {
             "total_models": len(cls._models),
-            "models": {
-                name: model.health_check()
-                for name, model in cls._models.items()
-            }
+            "models": {name: model.health_check() for name, model in cls._models.items()},
         }
 
     @classmethod
@@ -199,10 +192,7 @@ class ModelRegistry:
                 auto_load = model_config.pop("auto_load", True)
 
                 cls.register_model(
-                    name=name,
-                    model_type=model_type,
-                    config=model_config,
-                    auto_load=auto_load
+                    name=name, model_type=model_type, config=model_config, auto_load=auto_load
                 )
             except Exception as e:
                 logger.error(f"Failed to load model '{name}': {e}")

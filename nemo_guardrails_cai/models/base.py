@@ -93,5 +93,5 @@ class BaseModelService(ABC):
             "model_name": self.model_name,
             "device": self.device,
             "loaded": self.is_loaded(),
-            "status": "healthy" if self.is_loaded() else "not_loaded"
+            "status": "healthy" if self.is_loaded() else "not_loaded",
         }
