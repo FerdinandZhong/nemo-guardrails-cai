@@ -5,6 +5,15 @@ echo "=============================================================="
 echo "Starting NeMo Guardrails environment setup"
 echo "=============================================================="
 
+# Sync latest code from git
+echo "Syncing latest code from repository..."
+cd /home/cdsw
+if git pull origin feature/implementation; then
+    echo "✓ Code synced successfully"
+else
+    echo "⚠ Git pull failed (continuing with existing code)"
+fi
+
 VENV_PATH="/home/cdsw/.venv"
 
 # Check if virtual environment exists
