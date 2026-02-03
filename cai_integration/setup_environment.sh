@@ -30,6 +30,9 @@ fi
 echo "Activating virtual environment..."
 source "$VENV_PATH/bin/activate"
 
+# Disable --user flag (conflicts with virtualenv)
+export PIP_USER=0
+
 # Try to upgrade pip (non-critical)
 echo "Attempting to upgrade pip..."
 if pip install --upgrade pip; then
