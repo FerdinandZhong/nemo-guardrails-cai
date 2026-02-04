@@ -43,14 +43,17 @@ echo ""
 echo "Configuration:"
 echo "  Config Path: $GUARDRAILS_CONFIG_PATH"
 echo "  Log Level: $LOG_LEVEL"
-echo "  Port: ${CDSW_APP_PORT:-8080}"
+echo "  Host: 127.0.0.1"
+echo "  Port: ${CDSW_APP_PORT:-8100}"
 echo ""
 
 # Start NeMo Guardrails server
+# Note: Use --host 127.0.0.1 because CAI's proxy already binds to 0.0.0.0
 echo "Starting NeMo Guardrails server..."
 python -m nemoguardrails server \
     --config "$GUARDRAILS_CONFIG_PATH" \
-    --port "${CDSW_APP_PORT:-8080}" \
+    --host 127.0.0.1 \
+    --port "${CDSW_APP_PORT:-8100}" \
     --verbose
 
 echo "==============================================="
