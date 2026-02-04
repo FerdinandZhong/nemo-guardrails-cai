@@ -131,8 +131,10 @@ class GuardrailsDeployer:
         guardrails_config = self.config.get("guardrails", {})
 
         app_name = "nemo-guardrails-server"
+        # Subdomain must match pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+        app_subdomain = "nemo-guardrails"
 
-        logger.info(f"Creating application: {app_name}")
+        logger.info(f"Creating application: {app_name} (subdomain: {app_subdomain})")
 
         # Build startup script
         startup_script = self._build_startup_script()
@@ -140,6 +142,7 @@ class GuardrailsDeployer:
         # Build application configuration
         app_data = {
             "name": app_name,
+            "subdomain": app_subdomain,
             "description": "NeMo Guardrails Server",
             "script": startup_script,
             "cpu": server_config.get("cpu", 4),
@@ -259,15 +262,21 @@ exec python cai_integration/app_startup.py
 
 def main():
     """Main deployment function."""
-    # Get environment variables
-    cml_host = os.environ.get("CML_HOST")
-    api_key = os.environ.get("CML_API_KEY")
+    # Get environment variables from CAI built-in variables
+    # CDSW_DOMAIN: CAI domain (e.g., "ml-xxxxx.cloudera.site")
+    # CDSW_APIV2_KEY: CAI API key
+    # CDSW_PROJECT_ID: Project ID
+    cdsw_domain = os.environ.get("CDSW_DOMAIN")
+    api_key = os.environ.get("CDSW_APIV2_KEY")
     project_id = os.environ.get("CDSW_PROJECT_ID")
     config_path = os.environ.get("GUARDRAILS_CONFIG", "guardrails_config.yaml")
 
-    if not all([cml_host, api_key, project_id]):
+    # Construct CML host from domain
+    cml_host = f"https://{cdsw_domain}" if cdsw_domain else None
+
+    if not all([cdsw_domain, api_key, project_id]):
         logger.error(
-            "Missing required environment variables: CML_HOST, CML_API_KEY, CDSW_PROJECT_ID"
+            "Missing required environment variables: CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID"
         )
         sys.exit(1)
 
