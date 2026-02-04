@@ -136,15 +136,13 @@ class GuardrailsDeployer:
 
         logger.info(f"Creating application: {app_name} (subdomain: {app_subdomain})")
 
-        # Build startup script
-        startup_script = self._build_startup_script()
-
         # Build application configuration
+        # Note: script must be a file path, not inline content
         app_data = {
             "name": app_name,
             "subdomain": app_subdomain,
             "description": "NeMo Guardrails Server",
-            "script": startup_script,
+            "script": "cai_integration/app_startup.py",
             "cpu": server_config.get("cpu", 4),
             "memory": server_config.get("memory", 16),
             "environment": {
@@ -173,29 +171,6 @@ class GuardrailsDeployer:
         except Exception as e:
             logger.error(f"Failed to create application: {e}")
             return None
-
-    def _build_startup_script(self) -> str:
-        """Build the startup script for the application.
-
-        Returns a simple bash wrapper that calls the Python entry point script.
-        The Python script (app_startup.py) handles environment setup and launches
-        the NeMo Guardrails server via the bash script (app_startup.sh).
-
-        Returns:
-            Startup script as string
-        """
-        script = """#!/bin/bash
-set -eox pipefail
-
-# CAI Application Startup Wrapper
-# This simple script calls the Python entry point which handles all setup
-
-cd /home/cdsw
-
-# Execute the Python startup script
-exec python cai_integration/app_startup.py
-"""
-        return script
 
     def wait_for_app_ready(self, app_id: str, timeout: int = 300) -> bool:
         """Wait for application to be ready.
