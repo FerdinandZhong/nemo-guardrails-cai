@@ -35,6 +35,7 @@ jobs:
     runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
 
   # Job 3: Launch Guardrails Server (creates CAI Application)
+  # Uses CAI built-in environment variables: CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID
   launch_guardrails:
     name: "Launch Guardrails Server"
     description: "Create and deploy NeMo Guardrails as CAI Application"
@@ -45,7 +46,3 @@ jobs:
     timeout: 900
     parent_job_key: "setup_environment"
     runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
-    environment:
-      CML_HOST: "${CML_HOST}"
-      CML_API_KEY: "${CML_API_KEY}"
-      CDSW_PROJECT_ID: "${CDSW_PROJECT_ID}"
