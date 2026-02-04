@@ -9,8 +9,11 @@
 # - All scripts must be file paths relative to project root (e.g., "cai_integration/script.py")
 # - CAI API does not support inline scripts or command prefixes
 # - git_sync: Bash script that pulls repository
-# - setup_environment: Python script that creates the venv
+# - setup_environment: Python script that creates the venv (skips if already configured)
 # - launch_guardrails: Python script that creates CAI Application via REST API
+#
+# Environment Variables:
+# - FORCE_REINSTALL: Set to "true" to force full environment reinstall (default: "false")
 #
 # Job Dependencies (handled automatically by CAI):
 # - setup_environment (root) → launch_guardrails (child)
@@ -22,6 +25,7 @@
 
 jobs:
   # Job 1: Setup Python Environment (ROOT JOB for initial deployment)
+  # Set FORCE_REINSTALL=true to force full reinstall even if venv exists
   setup_environment:
     name: "Setup Python Environment"
     description: "Create Python venv and install NeMo Guardrails dependencies"
@@ -32,6 +36,8 @@ jobs:
     timeout: 1800
     parent_job_key: null
     runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    environment:
+      FORCE_REINSTALL: "false"
 
   # Job 2: Launch Guardrails Server (creates CAI Application)
   launch_guardrails:

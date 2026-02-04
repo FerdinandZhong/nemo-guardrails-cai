@@ -16,10 +16,57 @@ fi
 
 VENV_PATH="/home/cdsw/.venv"
 
+# Check if we can skip setup (venv exists with nemoguardrails installed)
+check_existing_setup() {
+    if [ -d "$VENV_PATH" ] && [ -f "$VENV_PATH/bin/python" ]; then
+        # Check if nemoguardrails is installed
+        if "$VENV_PATH/bin/python" -c "import nemoguardrails" 2>/dev/null; then
+            return 0  # Setup exists
+        fi
+    fi
+    return 1  # Setup needed
+}
+
+# Check FORCE_REINSTALL flag
+if [ "${FORCE_REINSTALL:-false}" = "true" ]; then
+    echo "FORCE_REINSTALL=true, performing full setup..."
+    SKIP_SETUP=false
+elif check_existing_setup; then
+    echo "✓ Existing setup detected with nemoguardrails installed"
+    SKIP_SETUP=true
+else
+    echo "No existing setup found, performing full setup..."
+    SKIP_SETUP=false
+fi
+
+if [ "$SKIP_SETUP" = "true" ]; then
+    echo "Skipping environment setup (use FORCE_REINSTALL=true to force)"
+
+    # Just verify the installation
+    echo "Verifying installation..."
+    source "$VENV_PATH/bin/activate"
+    python -c "import nemoguardrails; print(f'NeMo Guardrails version: {nemoguardrails.__version__}')"
+
+    echo "=============================================================="
+    echo "Environment already configured - setup skipped"
+    echo "Virtual environment location: $VENV_PATH"
+    echo "=============================================================="
+    exit 0
+fi
+
+# Full setup path
 # Check if virtual environment exists
 if [ -d "$VENV_PATH" ]; then
-    echo "✓ Virtual environment already exists at $VENV_PATH"
-    echo "  Reusing existing environment..."
+    if [ "${FORCE_REINSTALL:-false}" = "true" ]; then
+        echo "Removing existing virtual environment for reinstall..."
+        rm -rf "$VENV_PATH"
+        echo "Creating new virtual environment at $VENV_PATH"
+        python3 -m venv "$VENV_PATH"
+        echo "✓ Virtual environment created successfully"
+    else
+        echo "✓ Virtual environment already exists at $VENV_PATH"
+        echo "  Reusing existing environment..."
+    fi
 else
     echo "Creating new virtual environment at $VENV_PATH"
     python3 -m venv "$VENV_PATH"
