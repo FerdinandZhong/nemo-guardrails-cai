@@ -33,8 +33,11 @@ def main():
         cwd=str(project_root)
     )
 
-    return result.returncode
+    if result.returncode != 0:
+        raise RuntimeError(f"Setup script failed with exit code {result.returncode}")
+
+    print("Setup completed successfully")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
