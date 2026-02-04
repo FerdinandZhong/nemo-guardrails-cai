@@ -131,8 +131,10 @@ class GuardrailsDeployer:
         guardrails_config = self.config.get("guardrails", {})
 
         app_name = "nemo-guardrails-server"
+        # Subdomain must match pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+        app_subdomain = "nemo-guardrails"
 
-        logger.info(f"Creating application: {app_name}")
+        logger.info(f"Creating application: {app_name} (subdomain: {app_subdomain})")
 
         # Build startup script
         startup_script = self._build_startup_script()
@@ -140,6 +142,7 @@ class GuardrailsDeployer:
         # Build application configuration
         app_data = {
             "name": app_name,
+            "subdomain": app_subdomain,
             "description": "NeMo Guardrails Server",
             "script": startup_script,
             "cpu": server_config.get("cpu", 4),
