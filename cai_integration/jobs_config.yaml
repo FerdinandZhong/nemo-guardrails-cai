@@ -35,7 +35,7 @@ jobs:
     memory: 8
     timeout: 1800
     parent_job_key: null
-    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
     environment:
       FORCE_REINSTALL: "false"
 
@@ -50,4 +50,4 @@ jobs:
     memory: 4
     timeout: 900
     parent_job_key: "setup_environment"
-    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"

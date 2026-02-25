@@ -43,15 +43,18 @@ echo ""
 echo "Configuration:"
 echo "  Config Path: $GUARDRAILS_CONFIG_PATH"
 echo "  Log Level: $LOG_LEVEL"
-echo "  Port: ${CDSW_APP_PORT:-8080}"
+echo "  Host: 127.0.0.1"
+echo "  Port: ${CDSW_APP_PORT:-8100}"
 echo ""
 
-# Start NeMo Guardrails server
+# Start NeMo Guardrails server using uvicorn directly
+# Note: Use --host 127.0.0.1 because CAI's proxy already binds to 0.0.0.0
+# The nemoguardrails CLI doesn't support --host, so we use uvicorn directly
 echo "Starting NeMo Guardrails server..."
-python -m nemoguardrails server \
-    --config "$GUARDRAILS_CONFIG_PATH" \
-    --port "${CDSW_APP_PORT:-8080}" \
-    --verbose
+export GUARDRAILS_CONFIG="$GUARDRAILS_CONFIG_PATH"
+python -m uvicorn nemoguardrails.server.api:app \
+    --host 127.0.0.1 \
+    --port "${CDSW_APP_PORT:-8100}"
 
 echo "==============================================="
 echo "NeMo Guardrails Server stopped"

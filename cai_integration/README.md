@@ -188,7 +188,7 @@ server:
   memory: 16
   bypass_authentication: false
   # Port is automatically determined by CDSW_APP_PORT in CAI
-  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+  runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
 
 # Guardrails configuration
 guardrails:
