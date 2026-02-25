@@ -20,7 +20,7 @@ jobs:
     memory: 4
     timeout: 600
     parent_job_key: null
-    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
 
   # Job 2: Setup Python Environment
   setup_environment:
@@ -32,7 +32,7 @@ jobs:
     memory: 8
     timeout: 1800
     parent_job_key: "git_sync"
-    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
 
   # Job 3: Launch Guardrails Server (creates CAI Application)
   # Uses CAI built-in environment variables: CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID
@@ -45,4 +45,4 @@ jobs:
     memory: 4
     timeout: 900
     parent_job_key: "setup_environment"
-    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2025.09.1-b5"
+    runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
