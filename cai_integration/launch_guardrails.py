@@ -151,7 +151,7 @@ class GuardrailsDeployer:
             "bypass_authentication": server_config.get("bypass_authentication", True),
             "runtime_identifier": server_config.get(
                 "runtime_identifier",
-                "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6",
+                "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6",
             ),
         }
 
