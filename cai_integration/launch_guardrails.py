@@ -138,6 +138,16 @@ class GuardrailsDeployer:
 
         # Build application configuration
         # Note: script must be a file path, not inline content
+        app_environment = {
+            "GUARDRAILS_CONFIG_PATH": guardrails_config.get("config_path", "config"),
+        }
+
+        # Pass OPENAI_API_KEY if available (from GitHub Actions secrets)
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        if openai_api_key:
+            app_environment["OPENAI_API_KEY"] = openai_api_key
+            logger.info("OPENAI_API_KEY will be passed to application")
+
         app_data = {
             "name": app_name,
             "subdomain": app_subdomain,
@@ -145,9 +155,7 @@ class GuardrailsDeployer:
             "script": "cai_integration/app_startup.py",
             "cpu": server_config.get("cpu", 4),
             "memory": server_config.get("memory", 16),
-            "environment": {
-                "GUARDRAILS_CONFIG_PATH": guardrails_config.get("config_path", "config"),
-            },
+            "environment": app_environment,
             "bypass_authentication": server_config.get("bypass_authentication", True),
             "runtime_identifier": server_config.get(
                 "runtime_identifier",
