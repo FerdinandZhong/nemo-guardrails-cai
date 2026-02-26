@@ -202,7 +202,8 @@ class GuardrailsDeployer:
                 if result:
                     status = result.get("status", "unknown")
 
-                    if status == "running":
+                    # CAI API returns status like "APPLICATION_RUNNING", "APPLICATION_STOPPED", etc.
+                    if status.upper() in ("RUNNING", "APPLICATION_RUNNING"):
                         logger.info("Application is running")
                         return True
 
