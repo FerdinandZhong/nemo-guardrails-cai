@@ -142,11 +142,19 @@ class GuardrailsDeployer:
             "GUARDRAILS_CONFIG_PATH": guardrails_config.get("config_path", "config"),
         }
 
-        # Pass OPENAI_API_KEY if available (from GitHub Actions secrets)
-        openai_api_key = os.environ.get("OPENAI_API_KEY")
-        if openai_api_key:
-            app_environment["OPENAI_API_KEY"] = openai_api_key
-            logger.info("OPENAI_API_KEY will be passed to application")
+        # Pass LLM configuration if available (from GitHub Actions inputs/secrets)
+        llm_config = {
+            "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY"),
+            "LLM_PROVIDER": os.environ.get("LLM_PROVIDER"),
+            "LLM_MODEL": os.environ.get("LLM_MODEL"),
+            "LLM_API_BASE": os.environ.get("LLM_API_BASE"),
+        }
+
+        for key, value in llm_config.items():
+            if value:
+                app_environment[key] = value
+                if key != "OPENAI_API_KEY":  # Don't log the API key
+                    logger.info(f"{key} will be passed to application: {value}")
 
         app_data = {
             "name": app_name,

@@ -14,7 +14,10 @@
 #
 # Environment Variables:
 # - FORCE_REINSTALL: Set to "true" to force full environment reinstall (default: "false")
-# - OPENAI_API_KEY: OpenAI API key for LLM models (passed from GitHub Actions secrets)
+# - OPENAI_API_KEY: LLM API key (passed from GitHub Actions inputs/secrets)
+# - LLM_PROVIDER: LLM provider name (openai, azure, etc.)
+# - LLM_MODEL: LLM model name (e.g., gpt-3.5-turbo)
+# - LLM_API_BASE: Custom API base URL (optional)
 #
 # Job Dependencies (handled automatically by CAI):
 # - setup_environment (root) → launch_guardrails (child)
@@ -42,7 +45,7 @@ jobs:
 
   # Job 2: Launch Guardrails Server (creates CAI Application)
   # Uses CAI built-in environment variables: CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID
-  # OPENAI_API_KEY is passed from GitHub Actions secrets
+  # LLM configuration is passed from GitHub Actions inputs/secrets
   launch_guardrails:
     name: "Launch Guardrails Server"
     description: "Create and deploy NeMo Guardrails as CAI Application"
@@ -55,3 +58,6 @@ jobs:
     runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
     environment:
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      LLM_PROVIDER: "${LLM_PROVIDER}"
+      LLM_MODEL: "${LLM_MODEL}"
+      LLM_API_BASE: "${LLM_API_BASE}"

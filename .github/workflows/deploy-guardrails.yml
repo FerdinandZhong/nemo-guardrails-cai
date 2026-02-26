@@ -13,6 +13,26 @@ on:
         required: false
         default: false
         type: boolean
+      llm_provider:
+        description: 'LLM provider (openai, azure, etc.)'
+        required: false
+        default: 'openai'
+        type: string
+      llm_model:
+        description: 'LLM model name (e.g., gpt-3.5-turbo, gpt-4)'
+        required: false
+        default: 'gpt-3.5-turbo'
+        type: string
+      llm_api_base:
+        description: 'LLM API base URL (leave empty for default)'
+        required: false
+        default: ''
+        type: string
+      llm_api_key:
+        description: 'LLM API key (leave empty to use repository secret)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   setup-project:
@@ -80,8 +100,16 @@ jobs:
         env:
           CML_HOST: ${{ secrets.CML_HOST }}
           CML_API_KEY: ${{ secrets.CML_API_KEY }}
+          # LLM configuration - use input or fall back to secret
+          OPENAI_API_KEY: ${{ github.event.inputs.llm_api_key || secrets.OPENAI_API_KEY }}
+          LLM_PROVIDER: ${{ github.event.inputs.llm_provider || 'openai' }}
+          LLM_MODEL: ${{ github.event.inputs.llm_model || 'gpt-3.5-turbo' }}
+          LLM_API_BASE: ${{ github.event.inputs.llm_api_base || '' }}
         run: |
           echo "📋 Creating CAI jobs for NeMo Guardrails..."
+          echo "   LLM Provider: $LLM_PROVIDER"
+          echo "   LLM Model: $LLM_MODEL"
+          echo "   LLM API Base: ${LLM_API_BASE:-'(default)'}"
           python cai_integration/create_jobs.py --project-id ${{ needs.setup-project.outputs.project_id }}
           echo "✅ Jobs created"
 
@@ -137,6 +165,11 @@ jobs:
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Force Rebuild**: ${{ github.event.inputs.force_rebuild || 'false' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Local Models**: ${{ github.event.inputs.enable_local_models || 'false' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### LLM Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Provider**: ${{ github.event.inputs.llm_provider || 'openai' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Model**: ${{ github.event.inputs.llm_model || 'gpt-3.5-turbo' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **API Base**: ${{ github.event.inputs.llm_api_base || '(default)' }}" >> $GITHUB_STEP_SUMMARY
 
   verify-deployment:
     needs: trigger-deployment

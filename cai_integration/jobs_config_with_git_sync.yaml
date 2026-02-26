@@ -36,7 +36,7 @@ jobs:
 
   # Job 3: Launch Guardrails Server (creates CAI Application)
   # Uses CAI built-in environment variables: CDSW_DOMAIN, CDSW_APIV2_KEY, CDSW_PROJECT_ID
-  # OPENAI_API_KEY is passed from GitHub Actions secrets
+  # LLM configuration is passed from GitHub Actions inputs/secrets
   launch_guardrails:
     name: "Launch Guardrails Server"
     description: "Create and deploy NeMo Guardrails as CAI Application"
@@ -49,3 +49,6 @@ jobs:
     runtime_identifier: "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6"
     environment:
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      LLM_PROVIDER: "${LLM_PROVIDER}"
+      LLM_MODEL: "${LLM_MODEL}"
+      LLM_API_BASE: "${LLM_API_BASE}"
