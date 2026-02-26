@@ -94,6 +94,7 @@ else
     pip install "pyyaml>=6.0.0"
     pip install "pydantic>=2.0.0"
     pip install "requests>=2.31.0"
+    pip install "langchain-openai>=0.1.0"
 
     echo "✓ All dependencies installed successfully"
 
