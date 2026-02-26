@@ -12,11 +12,37 @@ This script:
 import argparse
 import json
 import os
+import re
 import sys
 import yaml
 import requests
 from pathlib import Path
 from typing import Dict, Optional, Any
+
+
+def resolve_env_vars(value: str) -> str:
+    """Resolve ${VAR} placeholders in a string from environment variables."""
+    pattern = r'\$\{([^}]+)\}'
+
+    def replace_var(match):
+        var_name = match.group(1)
+        env_value = os.environ.get(var_name, "")
+        if not env_value:
+            print(f"   ⚠️  Warning: Environment variable {var_name} not set")
+        return env_value
+
+    return re.sub(pattern, replace_var, value)
+
+
+def resolve_env_vars_in_dict(env_dict: Dict[str, str]) -> Dict[str, str]:
+    """Resolve environment variable placeholders in a dictionary."""
+    resolved = {}
+    for key, value in env_dict.items():
+        if isinstance(value, str):
+            resolved[key] = resolve_env_vars(value)
+        else:
+            resolved[key] = value
+    return resolved
 
 
 class JobManager:
@@ -126,9 +152,9 @@ class JobManager:
         if "runtime_identifier" in job_config:
             job_data["runtime_identifier"] = job_config["runtime_identifier"]
 
-        # Add environment variables if specified
+        # Add environment variables if specified (resolve ${VAR} placeholders)
         if "environment" in job_config:
-            job_data["environment"] = job_config["environment"]
+            job_data["environment"] = resolve_env_vars_in_dict(job_config["environment"])
 
         result = self.make_request("POST", f"projects/{project_id}/jobs", data=job_data)
 

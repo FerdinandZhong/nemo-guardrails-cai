@@ -138,6 +138,24 @@ class GuardrailsDeployer:
 
         # Build application configuration
         # Note: script must be a file path, not inline content
+        app_environment = {
+            "GUARDRAILS_CONFIG_PATH": guardrails_config.get("config_path", "config"),
+        }
+
+        # Pass LLM configuration if available (from GitHub Actions inputs/secrets)
+        llm_config = {
+            "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY"),
+            "LLM_PROVIDER": os.environ.get("LLM_PROVIDER"),
+            "LLM_MODEL": os.environ.get("LLM_MODEL"),
+            "LLM_API_BASE": os.environ.get("LLM_API_BASE"),
+        }
+
+        for key, value in llm_config.items():
+            if value:
+                app_environment[key] = value
+                if key != "OPENAI_API_KEY":  # Don't log the API key
+                    logger.info(f"{key} will be passed to application: {value}")
+
         app_data = {
             "name": app_name,
             "subdomain": app_subdomain,
@@ -145,13 +163,11 @@ class GuardrailsDeployer:
             "script": "cai_integration/app_startup.py",
             "cpu": server_config.get("cpu", 4),
             "memory": server_config.get("memory", 16),
-            "environment": {
-                "GUARDRAILS_CONFIG_PATH": guardrails_config.get("config_path", "config"),
-            },
+            "environment": app_environment,
             "bypass_authentication": server_config.get("bypass_authentication", True),
             "runtime_identifier": server_config.get(
                 "runtime_identifier",
-                "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-cuda:2026.01.1-b6",
+                "docker.repository.cloudera.com/cloudera/cdsw/ml-runtime-pbj-jupyterlab-python3.11-standard:2026.01.1-b6",
             ),
         }
 
@@ -194,7 +210,8 @@ class GuardrailsDeployer:
                 if result:
                     status = result.get("status", "unknown")
 
-                    if status == "running":
+                    # CAI API returns status like "APPLICATION_RUNNING", "APPLICATION_STOPPED", etc.
+                    if status.upper() in ("RUNNING", "APPLICATION_RUNNING"):
                         logger.info("Application is running")
                         return True
 
